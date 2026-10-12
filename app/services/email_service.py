@@ -33,7 +33,7 @@ def send_alert_email(alert_id: int, reason: str, hr_email: str = "rh@plurione.co
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        server = smtplib.SMTP('smtp.gamil.com', 587)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(sender_email, sender_password)
         text = msg.as_string()

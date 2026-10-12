@@ -8,7 +8,7 @@ except OSError:
     # En caso de no instalarse, se realiza descarga.
     from spacy.cli import download
     download("es_core_news_sm")
-    nlp = spacy.load("es_core_nes_sm")
+    nlp = spacy.load("es_core_news_sm")
 
 
 def sanitize_text(text: str) -> str:

@@ -67,7 +67,7 @@ class Alert(Base):
     feedback_id = Column(UUID(as_uuid=True), ForeignKey("feedback_entries.id"))
     risk_level = Column(String, nullable=False)
     reason = Column(String, nullable=False)
-    status = Column(String, default="Pendiente / OPEN")
+    status = Column(String, default="OPEN")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

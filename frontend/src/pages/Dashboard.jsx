@@ -64,12 +64,12 @@ function Dashboard() {
       
       // Peticion de actualizacion de FastAPI
       await axios.patch(`http://localhost:8000/api/v1/alerts/${id}`, 
-        { status: 'Atendida' },
+        { status: 'CLOSED' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setAlertas(alertas.map(alerta => 
-        alerta.id === id ? { ...alerta, status: 'Atendida' } : alerta
+        alerta.id === id ? { ...alerta, status: 'CLOSED' } : alerta
       ));
 
     } catch (err) {

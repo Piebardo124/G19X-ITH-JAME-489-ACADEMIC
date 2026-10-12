@@ -8,6 +8,7 @@ from app.services.ai_engine import analyze_sentiment_with_ai, generate_executive
 from typing import Optional
 from app.core.security import verify_token
 from app.services.email_service import send_alert_email
+from app.db.models import Department
 import uuid
 import csv
 import io
@@ -21,7 +22,7 @@ def analyze_feedback(
     feedback: FeedbackCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+
 ):
     try:
 
@@ -32,7 +33,8 @@ def analyze_feedback(
         new_feedback = FeedbackEntry(
             id=uuid.uuid4(),
             content_text=texto_limpio,
-            is_anonymous=True #Anonimo por defecto, Cambios en futuro.
+            is_anonymous=feedback.is_anonymous,
+            department_id=feedback.department_id
         )
 
         # Insercion de datos y guardado en PsotgreSQL
@@ -167,16 +169,16 @@ def process_csv_background(file_content: str):
                         reason=ai_results["metadata_ai"].get("red_flag_reason", "Riesgo detectado en carga masiva")
                     )
                     db.add(nueva_alerta)
-                    db.commit()
+                    # db.commit()
 
                 print(f"Registro {index} procesado con exito.")
-                time.sleep(11)
 
             except Exception as row_error:
                 db.rollback()
                 print(f"Error en registro {index}: {row_error}")
                 traceback.print_exc()
                 continue 
+        db.commit()
 
     except Exception as e:
         print(f"Error general en procesamiento masivo en segundo plano: {e}")
@@ -264,3 +266,11 @@ def get_executive_summary(
         "total_analyzed": len(comentarios),
         "executive_summary": resumen_ia
     }
+
+@router.get("/departments")
+def get_departments(db: Session = Depends(get_db)):
+    """
+    Devuelve el catalogo de departamentos para llenar el select en frontend.
+    """
+    departamentos = db.query(Department).all()
+    return departamentos

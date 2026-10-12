@@ -114,7 +114,7 @@ def generate_executive_summary(text_batch: str) -> str:
     """
     Genera un resumen ejecutivo cualitativo a partir de multiples comentarios.
     """
-    if not os.getevn("AZURE_OPENAI_API_KEY "):
+    if not os.getenv("AZURE_OPENAI_API_KEY"):
         return "Simulador: El clima laboral muestra áreas de oportunidad en carga de trabajo, pero buena motivación general."
 
     try:
