@@ -4,12 +4,12 @@ import os
 import smtplib
 
 def send_alert_email(alert_id: int, reason: str, hr_email: str = "rh@plurione.com"):
-    """ Envio correo de alerta critica a recursos Humanos. """
+    """Envía un correo de alerta crítica al área de Recursos Humanos."""
     sender_email = os.getenv("SMTP_EMAIL", "CorreoRandom@gmail.com")
     sender_password = os.getenv("SMTP_PASSWORD", "contraseña_random")
 
     if sender_email == "CorreoRandom@gmail.com":
-        print (f" [SIMULACION DE CORREO] Alerta Alerta #{alert_id} enviada a {hr_email}. Motivo: {reason}")
+        print(f"Simulación: se enviaría la alerta {alert_id} a {hr_email}. Motivo: {reason}")
         return
 
     msg = MIMEMultipart()
@@ -39,6 +39,6 @@ def send_alert_email(alert_id: int, reason: str, hr_email: str = "rh@plurione.co
         text = msg.as_string()
         server.sendmail(sender_email, hr_email, text)
         server.quit()
-        print(f"Correo de alerta #{alert_id} enviado exitosamente a {hr_email}")
+        print(f"Se envió la alerta {alert_id} a {hr_email}.")
     except Exception as e:
-        print(f"Error enviando correo de alerta: {e}")
+        print(f"No se pudo enviar la alerta {alert_id}: {e}")

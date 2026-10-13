@@ -13,7 +13,7 @@ class User(Base):
     user_id = Column(String, primary_key=True, index=True)
     email = Column(String(100), unique=True, nullable=False)
     role = Column(String, default="analyst")
-    # Temporal (Julio del futuro cambialo nmms)
+    # La contraseña puede ser nula para cuentas autenticadas por un proveedor externo.
     hashed_password = Column(String, nullable=True)
 
 class Department(Base):
@@ -24,6 +24,20 @@ class Department(Base):
     name = Column(String(100), unique=True, nullable=False)
 
     feedbacks = relationship("FeedbackEntry", back_populates="department")
+
+class CSVImport(Base):
+    __tablename__ = "csv_imports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filename = Column(String(255), nullable=False)
+    status = Column(String(30), nullable=False, default="QUEUED")
+    total_rows = Column(Integer, nullable=False, default=0)
+    processed_rows = Column(Integer, nullable=False, default=0)
+    skipped_rows = Column(Integer, nullable=False, default=0)
+    failed_rows = Column(Integer, nullable=False, default=0)
+    error_summary = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    finished_at = Column(DateTime(timezone=True), nullable=True)
 
 class FeedbackEntry(Base):
     ##Comentarios originales inmutables

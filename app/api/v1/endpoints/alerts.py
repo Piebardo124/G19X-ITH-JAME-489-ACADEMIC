@@ -70,12 +70,19 @@ def update_alert_status(
         )
 
     db_alert = db.query(Alert).filter(Alert.id == alert_id).first()
-
     # En caso de existir error, arrojar error 404
     if not db_alert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Alerta con id {alert_id} no encontrada."
+        )
+
+    ESTADOS_VALIDOS = ["OPEN", "IN_PROGRESS", "CLOSED", "FALSE_POSITIVE"]
+
+    if alert_update.status not in ESTADOS_VALIDOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Estatus inválido. Use: {ESTADOS_VALIDOS}"
         )
 
     db_alert.status = alert_update.status

@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: plurione_user
-      POSTGRES_PASSWORD: contrasenaultrasecreta
-      POSTGRES_DB: sentiment_db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -22,7 +20,8 @@ services:
     env_file:
       - ./.env
     environment:
-      - DATABASE_URL=postgresql://plurione_user:contrasenaultrasecreta@db:5432/sentiment_db
+      DATABASE_URL: postgresql://${POSTGRES_USER_URLENCODED}:${POSTGRES_PASSWORD_URLENCODED}@db:5432/${POSTGRES_DB_URLENCODED}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     depends_on:
       - db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 
@@ -39,4 +38,4 @@ services:
       - web
 volumes:
   postgres_data:
-  
+

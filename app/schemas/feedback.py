@@ -5,7 +5,7 @@ from datetime import datetime
 #Entrada
 class FeedbackCreate(BaseModel):
     ##Input JSON requerido en POST /api/v1/nlp/analyze-feedback
-    text_content: str = Field(..., min_length=5, description="Comentario Random")
+    text_content: str = Field(..., min_length=5, max_length=3000, description="Comentario Random")
     is_anonymous: bool = True
     department_id: Optional[int] = None
 

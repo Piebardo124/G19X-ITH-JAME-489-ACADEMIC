@@ -5,7 +5,12 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 # Llave para firmar los tokens
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "plurione_super_secret_key_2026")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
+if not SECRET_KEY:
+    raise ValueError("La variable de entorno JWT_SECRET_KEY no está configurada.")
+if len(SECRET_KEY.encode("utf-8")) < 32:
+    raise ValueError("JWT_SECRET_KEY debe tener al menos 32 bytes para HS256.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8 # Cumlimiento de arquitectura.
 
@@ -44,4 +49,4 @@ def verify_token(token: str = Depends(oauth2_schema)):
         )
     except jwt.InvalidTokenError:
         raise credentials_exception
-    
+

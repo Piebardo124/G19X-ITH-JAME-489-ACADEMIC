@@ -1,6 +1,8 @@
 import {useState, useEffect} from 'react';
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 function Buzon() {
   const [texto, setTexto] = useState('');
   const [esAnonimo, setEsAnonimo] = useState(true);
@@ -15,10 +17,11 @@ function Buzon() {
   useEffect(() => {
     const fetchDepartamentos = async () => {
       try {
-        const respuesta = await axios.get('http://localhost:8000/api/v1/nlp/departments');
+        const respuesta = await axios.get(`${API_BASE_URL}/api/v1/nlp/departments`);
         setDepartamentos(respuesta.data);
       } catch (error) {
         console.error("Error al cargar el catálogo de departamentos:", error);
+        alert("No se pudo cargar el catálogo de departamentos. Por favor, recarga la página o intenta más tarde.");
       }
     };
     fetchDepartamentos();
@@ -29,7 +32,7 @@ function Buzon() {
 
     try {
       // Logica de React para llamar a FastAPI en Docker
-      await axios.post('http://localhost:8000/api/v1/nlp/analyze-feedback', {
+      await axios.post(`${API_BASE_URL}/api/v1/nlp/analyze-feedback`, {
         text_content: texto,
         is_anonymous: esAnonimo,
         department_id:  departamentoId ? parseInt(departamentoId) : null

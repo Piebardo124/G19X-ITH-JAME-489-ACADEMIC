@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 function Dashboard() {
   // Estados para la bandeja de alertas
   const [alertas, setAlertas] = useState([]);
@@ -12,6 +14,7 @@ function Dashboard() {
   const [archivoCsv, setArchivoCsv] = useState(null);
   const [subiendoCsv, setSubiendoCsv] = useState(false);
   const [mensajeCsv, setMensajeCsv] = useState('');
+  const [csvImportId, setCsvImportId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -28,7 +31,7 @@ function Dashboard() {
         }
 
         // Peticion GET a backend envaindo el token en Heades
-        const respuesta = await axios.get('http://localhost:8000/api/v1/alerts', {
+        const respuesta = await axios.get(`${API_BASE_URL}/api/v1/alerts`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -49,6 +52,50 @@ function Dashboard() {
     obtenerAlertas();
   }, [navigate]);
 
+  useEffect(() => {
+    if (!csvImportId) return undefined;
+
+    let cancelado = false;
+    let timeoutId;
+    const consultarEstado = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const respuesta = await axios.get(`${API_BASE_URL}/api/v1/nlp/upload-csv/${csvImportId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (cancelado) return;
+
+        const carga = respuesta.data;
+        if (['QUEUED', 'PROCESSING'].includes(carga.status)) {
+          setMensajeCsv(`Procesando CSV: ${carga.processed_rows} filas procesadas...`);
+          timeoutId = setTimeout(consultarEstado, 2000);
+          return;
+        }
+
+        const resumen = `${carga.processed_rows} procesadas, ${carga.skipped_rows} omitidas y ${carga.failed_rows} fallidas.`;
+        if (carga.status === 'FAILED') {
+          setMensajeCsv(`Error: no se pudo completar la carga. ${carga.errors || ''}`);
+        } else if (carga.status === 'COMPLETED_WITH_WARNINGS') {
+          setMensajeCsv(`Carga terminada con observaciones: ${resumen} ${carga.errors || ''}`);
+        } else {
+          setMensajeCsv(`Carga completada: ${resumen}`);
+        }
+        setCsvImportId(null);
+      } catch (err) {
+        if (!cancelado) {
+          setMensajeCsv(`Error al consultar el estado de la carga: ${err.response?.data?.detail || 'intenta recargar el panel.'}`);
+          setCsvImportId(null);
+        }
+      }
+    };
+
+    consultarEstado();
+    return () => {
+      cancelado = true;
+      clearTimeout(timeoutId);
+    };
+  }, [csvImportId]);
+
   // Funcion para el boton de salir
   const cerrarSesion = () => {
     localStorage.removeItem('token');
@@ -63,7 +110,7 @@ function Dashboard() {
       const token = localStorage.getItem('token');
       
       // Peticion de actualizacion de FastAPI
-      await axios.patch(`http://localhost:8000/api/v1/alerts/${id}`, 
+      await axios.patch(`${API_BASE_URL}/api/v1/alerts/${id}`,
         { status: 'CLOSED' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -91,14 +138,15 @@ function Dashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      const respuesta = await axios.post('http://localhost:8000/api/v1/nlp/upload-csv', formData, {
+      const respuesta = await axios.post(`${API_BASE_URL}/api/v1/nlp/upload-csv`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
 
-      setMensajeCsv(` ${respuesta.data.message}`);
+      setMensajeCsv(respuesta.data.message);
+      setCsvImportId(respuesta.data.import_id);
       setArchivoCsv(null);
 
       // Reseteo campo de archivo en HTML
@@ -107,6 +155,8 @@ function Dashboard() {
       console.error("Error al subir CSV:", err);
       const errorDetail = err.response?.data?.detail || "Error desconocido al procesar el archivo.";
       setMensajeCsv(`Error: ${errorDetail}`);
+    } finally {
+      setSubiendoCsv(false);
     }
   }
 
@@ -149,7 +199,12 @@ function Dashboard() {
           </button>
         </form>
         {mensajeCsv && (
-          <p style={{ marginTop: '15px', marginBottom: '0', fontWeight: '500', color: mensajeCsv.includes('✅') ? '#059669' : '#dc2626' }}>
+          <p style={{
+            marginTop: '15px',
+            marginBottom: '0',
+            fontWeight: '500',
+            color: mensajeCsv.startsWith('Carga completada:') ? '#059669' : mensajeCsv.startsWith('Carga terminada con observaciones:') ? '#b45309' : '#dc2626'
+          }}>
             {mensajeCsv}
           </p>
         )}
@@ -189,15 +244,15 @@ function Dashboard() {
                     <td style={{ padding: '12px' }}>
                       <span style={{
                         padding: '4px 8px', borderRadius: '12px', fontSize: '0.85em', fontWeight: 'bold',
-                        backgroundColor: alerta.status === 'Atendida' ? '#d1fae5' : '#fee2e2',
-                        color: alerta.status === 'Atendida' ? '#059669' : '#b91c1c'
+                        backgroundColor: alerta.status === 'CLOSED' ? '#d1fae5' : '#fee2e2',
+                        color: alerta.status === 'CLOSED' ? '#059669' : '#b91c1c'
                       }}>
                         {alerta.status}
                       </span>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       {/* El botón solo se muestra si el estatus no es "Atendida" */}
-                      {alerta.status !== 'Atendida' && (
+                      {alerta.status !== 'CLOSED' && (
                         <button
                           onClick={() => marcarComoAtendida(alerta.id)}
                           style={{
