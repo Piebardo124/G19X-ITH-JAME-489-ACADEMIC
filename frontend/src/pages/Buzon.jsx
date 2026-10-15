@@ -8,8 +8,8 @@ function Buzon() {
   const [esAnonimo, setEsAnonimo] = useState(true);
   const [departamentoId, setDepartamentoId] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [enviadoExito, setEnviadoExito] = useState(false);
-
+  const [mensajeExito, setMensajeExito] = useState('');
+  
   // Lista estatica de departamentos
   const [departamentos, setDepartamentos] = useState([]);
 
@@ -26,13 +26,13 @@ function Buzon() {
     };
     fetchDepartamentos();
   }, []);
+
   const manejarEnvio = async (e) => {
     e.preventDefault();
     setCargando(true);
-
     try {
       // Logica de React para llamar a FastAPI en Docker
-      await axios.post(`${API_BASE_URL}/api/v1/nlp/analyze-feedback`, {
+      const respuesta = await axios.post(`${API_BASE_URL}/api/v1/nlp/analyze-feedback`, {
         text_content: texto,
         is_anonymous: esAnonimo,
         department_id:  departamentoId ? parseInt(departamentoId) : null
@@ -41,10 +41,11 @@ function Buzon() {
       setTexto('');
       setDepartamentoId('');
       setEsAnonimo(true);
-      setEnviadoExito(true);
+
+      setMensajeExito(respuesta.data.message || "Tu comentario fue registrado.");
 
       // Ocultar mensaje despues de 5 segundos
-      setTimeout(() => setEnviadoExito(false), 5000);
+      setTimeout(() => setMensajeExito(''), 5000);
     } catch (error) {
       console.error("Error al enviar:", error);
       alert("Hubo un error de conexion, Por favor, intenta de nuevo.")
@@ -58,9 +59,9 @@ function Buzon() {
       <h1 style={{ color: '#1e293b' }}>PluriOne - Buzón Organizacional</h1>
       <p style={{ color: '#64748b', marginBottom: '30px' }}>Tu voz es importante. Cuéntanos cómo te sientes en tu entorno de trabajo.</p>
       
-      {enviadoExito && (
+      {mensajeExito && (
         <div style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '15px', borderRadius: '5px', marginBottom: '20px', fontWeight: 'bold' }}>
-          Gracias por tu retroalimentación. Ha sido registrada de forma segura.
+          {mensajeExito}
         </div>
       )}
 
@@ -104,7 +105,7 @@ function Buzon() {
             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
           />
           <label htmlFor="anonimoCheck" style={{ cursor: 'pointer', color: '#475569', fontSize: '15px' }}>
-            Enviar de forma totalmente anónima (Ocultar mi identidad)
+            Enviar de forma confidencial. (El sistema ocultará tu identidad, pero evita usar nombres propios o datos hiperespecíficos en tu texto).
           </label>
         </div>
 

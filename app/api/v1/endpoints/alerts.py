@@ -78,7 +78,6 @@ def update_alert_status(
         )
 
     ESTADOS_VALIDOS = ["OPEN", "IN_PROGRESS", "CLOSED", "FALSE_POSITIVE"]
-
     if alert_update.status not in ESTADOS_VALIDOS:
         raise HTTPException(
             status_code=400,
@@ -86,6 +85,7 @@ def update_alert_status(
         )
 
     db_alert.status = alert_update.status
+    db_alert.updated_by = current_user.get("email")
     db.commit()
     db.refresh(db_alert)
 

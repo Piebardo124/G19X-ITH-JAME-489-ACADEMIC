@@ -224,12 +224,13 @@ function Dashboard() {
                 <th style={{ padding: '12px' }}>Nivel de Riesgo</th>
                 <th style={{ padding: '12px' }}>Motivo detectado por IA</th>
                 <th style={{ padding: '12px' }}>Estatus</th>
+                <th style={{ padding: '12px', textAlign: 'center' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {alertas.length === 0 ? (
                 <tr>
-                  <td colSpan="4" style={{ padding: '15px', textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan="5" style={{ padding: '15px', textAlign: 'center', color: '#64748b' }}>
                     Sin alertas registradas por el momento.
                   </td>
                 </tr>

@@ -75,35 +75,20 @@ def analyze_sentiment_with_ai(text: str) -> dict:
 
 def _fallback_simulation(text: str) -> dict:
     """
-    Simulacion de respaldo
-    solo se ejecutara si hay una falla en la API de Azure
+    Fallback Seguro: Si Azure falla, No falsificara metricas.
+    Devolucion de nulos para que el comentario quede guardado pero marcado como "No analizado por IA"
     """
-
-    texto_lower = text.lower()
-    if any(palabra in texto_lower for palabra in ["mal", "pesado", "estrés", "renunciar", "problema"]):
-        return {
-            "polarity_score": -0.8,
-            "sentiment_label": "Negativo",
-            "key_phrases": ["señales de estrés"],
-            "metadata_ai": {
-                "emotions": ["frustración", "cansancio"],
-                "organizational_axes": ["Carga de trabajo"],
-                "risk_burnout": True,
-                "red_flag_reason": "Fallback: Lenguaje asociado a estrés o renuncia",
-                "is_simulation": True
-            }
-        }
-        
     return {
-        "polarity_score": 0.8,
-        "sentiment_label": "Positivo",
-        "key_phrases": ["experiencia favorable"],
+        "polarity_score": None, # No inventar números
+        "sentiment_label": "NO_DISPONIBLE",
+        "key_phrases": [],
         "metadata_ai": {
-            "emotions": ["motivación"],
-            "organizational_axes": ["Ambiente laboral"],
+            "emotions": [],
+            "organizational_axes": [],
             "risk_burnout": False,
             "red_flag_reason": "",
-            "is_simulation": True
+            "is_simulation": True,
+            "error_detail": "Motor de IA inaccesible. Análisis pospuesto."
         }
     }
 

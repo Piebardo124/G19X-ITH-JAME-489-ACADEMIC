@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Backgro
 from sqlalchemy.orm import Session
 from app.db.database import get_db, SessionLocal
 from app.db.models import FeedbackEntry, SentimentAnalysis, Alert, KeyPhrase, CSVImport
-from app.schemas.feedback import FeedbackCreate
+from app.schemas.feedback import FeedbackCreate, FeedbackResponse
 from app.services.sanitization import sanitize_text
 from app.services.ai_engine import analyze_sentiment_with_ai, generate_executive_summary
 from typing import Optional
@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 router = APIRouter()
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 
-@router.post("/analyze-feedback")
+@router.post("/analyze-feedback", response_model=FeedbackResponse)
 def analyze_feedback(
     feedback: FeedbackCreate,
     background_tasks: BackgroundTasks,
@@ -25,6 +25,14 @@ def analyze_feedback(
 
 ):
     try:
+        # Validacion existente del departamento
+        if feedback.department_id is not None:
+            depto_existe = db.query(Department).filter(Department.id == feedback.department_id).first()
+            if not depto_existe:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El departamento con ID {feedback.department_id} no existe."
+                )
 
         texto_limpio = sanitize_text(feedback.text_content)
 
@@ -81,9 +89,19 @@ def analyze_feedback(
                 reason=nueva_alerta.reason
             )
 
+        analisis_no_disponible = (
+            ai_results["sentiment_label"] == "NO_DISPONIBLE"
+            or ai_results["metadata_ai"].get("is_simulation", False)
+        )
+        mensaje = (
+            "Comentario guardado, pero no fue analizado porque el motor de IA no está disponible."
+            if analisis_no_disponible
+            else "Comentario recibido y analizado correctamente."
+        )
+
         return {
             "status": "success",
-            "message": "Feedback recibido, sanitizado y analizado correctamente",
+            "message": mensaje,
             "entry_id": new_feedback.id,
             "alert_generated_id": alerta_id,
             "ai_analysis": {
@@ -94,7 +112,9 @@ def analyze_feedback(
             }
         }
 
-        
+    except HTTPException as he:
+        db.rollback()
+        raise he
     except Exception as e:
         db.rollback()
         print(f"Error al procesar el comentario: {e}")

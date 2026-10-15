@@ -19,21 +19,20 @@ class UserRegister(BaseModel):
     password: str
 
 
-@router.post("/register-admin")
-def create_admin_user(user: UserRegister, db: Session = Depends(get_db)):
-    """Crea una cuenta de administrador para la instalación local."""
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="El correo ya está registrado.")
-
-    admin = User(
-        user_id=str(uuid.uuid4()),
-        email=user.email,
-        role="admin",
-        hashed_password=pwd_context.hash(user.password),
-    )
-    db.add(admin)
-    db.commit()
-    return {"message": "Administrador creado. Ya puedes iniciar sesión."}
+#@router.post("/register-admin")
+#def create_admin_user(user: UserRegister, db: Session = Depends(get_db)):
+#    """Crea una cuenta de administrador para la instalación local."""
+#    if db.query(User).filter(User.email == user.email).first():
+#        raise HTTPException(status_code=400, detail="El correo ya está registrado.")
+#    admin = User(
+#        user_id=str(uuid.uuid4()),
+#        email=user.email,
+#        role="admin",
+#        hashed_password=pwd_context.hash(user.password),
+#    )
+#    db.add(admin)
+#    db.commit()
+#   return {"message": "Administrador creado. Ya puedes iniciar sesión."}
 
 
 @router.post("/login")

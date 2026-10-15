@@ -1,6 +1,5 @@
 from pydantic import BaseModel, UUID4, Field
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Dict, Any
 
 #Entrada
 class FeedbackCreate(BaseModel):
@@ -10,26 +9,17 @@ class FeedbackCreate(BaseModel):
     department_id: Optional[int] = None
 
 #Salida
-class SentimentSummary(BaseModel):
+class AIAnalysisResponse(BaseModel):
     label: str
-    polarity_score: float
-
-class RiskAssesment(BaseModel):
-    risk_level: str
-    risk_score: float
-    red_flag_reason: Optional[str] = None
-
-class FeedbackResponseData(BaseModel):
-    entry_id: UUID4
-    analyzed_add_at: datetime
-    cleaned_text: str
-    sentiment_summary: SentimentSummary
-    emotions_detected: List[str]
-    organizactional_axes:List[str]
-    risk_assesment: RiskAssesment
-
+    polarity: Optional[float]
+    key_phrases: List[str]
+    details: Dict[str, Any]
+    
 class FeedbackResponse(BaseModel):
-    ## Contrato de salida principal
-    status: str = "success"
-    data: FeedbackResponseData
+    status: str
+    message: str
+    entry_id: UUID4
+    alert_generated_id: Optional[int] = None
+    ai_analysis: AIAnalysisResponse
+
 
