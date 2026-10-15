@@ -4,11 +4,14 @@ import spacy
 # Carga NLP en español de spaCy
 try:
     nlp = spacy.load("es_core_news_sm")
-except OSError:
-    # En caso de no instalarse, se realiza descarga.
-    from spacy.cli import download
-    download("es_core_news_sm")
-    nlp = spacy.load("es_core_news_sm")
+except OSError as exc:
+    # No iniciar descargas de red implícitas al importar la aplicación.
+    raise RuntimeError("Falta el modelo spaCy es_core_news_sm; instálalo durante el build.") from exc
+
+_KNOWN_NON_PERSON_ENTITIES = {
+    "react", "python", "azure", "postgresql", "docker", "typescript",
+    "javascript", "fastapi", "vite", "node.js",
+}
 
 
 def sanitize_text(text: str) -> str:
@@ -30,13 +33,19 @@ def sanitize_text(text: str) -> str:
 
     # Filtrado inteligente con NLP
     doc = nlp(text)
-    texto_limpio = text
-
-    # Identificador y remplazador de entidades
+    # Aplicar solo sobre offsets detectados; str.replace podía ocultar otras
+    # apariciones idénticas en palabras distintas (p. ej. "React" dentro de otra palabra).
+    replacements = []
     for ent in doc.ents:
+        entity_words = {token.casefold() for token in re.findall(r"[\w.]+", ent.text)}
+        if entity_words.intersection(_KNOWN_NON_PERSON_ENTITIES):
+            continue
         if ent.label_ == "PER":
-            texto_limpio = texto_limpio.replace(ent.text, '[NOMBRE OCULTO]')
+            replacements.append((ent.start_char, ent.end_char, "[NOMBRE OCULTO]"))
         elif ent.label_ == "LOC":
-            texto_limpio = texto_limpio.replace(ent.text, '[UBICACION OCULTA]')
+            replacements.append((ent.start_char, ent.end_char, "[UBICACION OCULTA]"))
 
+    texto_limpio = text
+    for start, end, replacement in sorted(replacements, reverse=True):
+        texto_limpio = texto_limpio[:start] + replacement + texto_limpio[end:]
     return texto_limpio

@@ -29,7 +29,7 @@ function Login() {
 
             navigate('/dashboard');
         } catch(err) {
-            console.error("Error de login:", err);
+            console.error("Error de login:", err.message);
             setError('Usuario o contraseña incorrectos');
         }
     };

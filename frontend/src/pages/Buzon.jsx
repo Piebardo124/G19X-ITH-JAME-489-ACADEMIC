@@ -5,11 +5,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 function Buzon() {
   const [texto, setTexto] = useState('');
-  const [esAnonimo, setEsAnonimo] = useState(true);
   const [departamentoId, setDepartamentoId] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
-  
+
   // Lista estatica de departamentos
   const [departamentos, setDepartamentos] = useState([]);
 
@@ -29,26 +28,33 @@ function Buzon() {
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
+
+    const textoLimpio = texto.trim();
+    if (textoLimpio.length < 5 || textoLimpio.length > 3000 || !/\p{L}{2,}/u.test(textoLimpio)) {
+        alert("El comentario debe tener entre 5 y 3000 caracteres e incluir una palabra con al menos dos letras.");
+        return;
+    }
+
     setCargando(true);
     try {
       // Logica de React para llamar a FastAPI en Docker
       const respuesta = await axios.post(`${API_BASE_URL}/api/v1/nlp/analyze-feedback`, {
-        text_content: texto,
-        is_anonymous: esAnonimo,
+        text_content: textoLimpio,
+        is_anonymous: true,
         department_id:  departamentoId ? parseInt(departamentoId) : null
       });
 
       setTexto('');
       setDepartamentoId('');
-      setEsAnonimo(true);
 
       setMensajeExito(respuesta.data.message || "Tu comentario fue registrado.");
 
       // Ocultar mensaje despues de 5 segundos
       setTimeout(() => setMensajeExito(''), 5000);
     } catch (error) {
-      console.error("Error al enviar:", error);
-      alert("Hubo un error de conexion, Por favor, intenta de nuevo.")
+      console.error("Error al enviar:", error.message);
+      const detalle = error.response?.data?.detail;
+      alert(detalle || "No se pudo enviar el comentario. Intenta de nuevo.");
     } finally {
       setCargando(false);
     }
@@ -58,7 +64,7 @@ function Buzon() {
     <div style={{ maxWidth: '600px', margin: '50px auto', fontFamily: 'sans-serif', textAlign: 'center', backgroundColor: '#ffffff', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
       <h1 style={{ color: '#1e293b' }}>PluriOne - Buzón Organizacional</h1>
       <p style={{ color: '#64748b', marginBottom: '30px' }}>Tu voz es importante. Cuéntanos cómo te sientes en tu entorno de trabajo.</p>
-      
+
       {mensajeExito && (
         <div style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '15px', borderRadius: '5px', marginBottom: '20px', fontWeight: 'bold' }}>
           {mensajeExito}
@@ -66,12 +72,12 @@ function Buzon() {
       )}
 
       <form onSubmit={manejarEnvio} style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
-        
+
         {/* Selector de Departamento Dinámico */}
         <div>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#334155' }}>Área o Departamento (Opcional)</label>
-          <select 
-            value={departamentoId} 
+          <select
+            value={departamentoId}
             onChange={(e) => setDepartamentoId(e.target.value)}
             style={{ width: '100%', padding: '10px', fontSize: '16px', borderRadius: '5px', border: '1px solid #cbd5e1' }}
           >
@@ -92,21 +98,12 @@ function Buzon() {
             style={{ width: '100%', padding: '10px', fontSize: '16px', borderRadius: '5px', border: '1px solid #cbd5e1', resize: 'vertical', boxSizing: 'border-box' }}
             required
             minLength="5"
+            maxLength="3000"
           />
         </div>
 
-        {/* Checkbox de Privacidad */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <input 
-            type="checkbox" 
-            id="anonimoCheck"
-            checked={esAnonimo}
-            onChange={(e) => setEsAnonimo(e.target.checked)}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-          />
-          <label htmlFor="anonimoCheck" style={{ cursor: 'pointer', color: '#475569', fontSize: '15px' }}>
-            Enviar de forma confidencial. (El sistema ocultará tu identidad, pero evita usar nombres propios o datos hiperespecíficos en tu texto).
-          </label>
+        <div style={{ color: '#475569', fontSize: '15px' }}>
+          Los comentarios se guardan sin vincularlos a una cuenta. Evita incluir nombres o datos que te identifiquen; la detección automática puede no ocultar todos los datos personales.
         </div>
 
         <button

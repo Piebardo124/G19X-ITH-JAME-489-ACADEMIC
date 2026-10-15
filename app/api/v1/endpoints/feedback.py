@@ -10,12 +10,14 @@ from typing import Optional
 from app.core.security import verify_token
 from app.services.email_service import send_alert_email
 from app.db.models import Department
+from datetime import date, datetime, time, timedelta, timezone
 import uuid
 import csv
 import io
-from datetime import datetime, timezone
+import logging
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 
 @router.post("/analyze-feedback", response_model=FeedbackResponse)
@@ -67,7 +69,6 @@ def analyze_feedback(
 
 
         # Crear una alerta cuando el análisis detecta un riesgo.
-        alerta_id = None
         is_risk = ai_results["metadata_ai"].get("risk_burnout", False)
         nueva_alerta = None
 
@@ -83,10 +84,9 @@ def analyze_feedback(
 
         if is_risk and nueva_alerta:
             db.refresh(nueva_alerta)
-            alerta_id = nueva_alerta.id
             background_tasks.add_task(
                 send_alert_email,
-                alert_id=alerta_id,
+                alert_id=nueva_alerta.id,
                 reason=nueva_alerta.reason
             )
 
@@ -104,13 +104,6 @@ def analyze_feedback(
             "status": "success",
             "message": mensaje,
             "entry_id": new_feedback.id,
-            "alert_generated_id": alerta_id,
-            "ai_analysis": {
-                "label": ai_results["sentiment_label"],
-                "polarity": ai_results["polarity_score"],
-                "key_phrases": ai_results.get("key_phrases", []),
-                "details": ai_results["metadata_ai"]
-            }
         }
 
     except HTTPException as he:
@@ -118,10 +111,10 @@ def analyze_feedback(
         raise he
     except Exception as e:
         db.rollback()
-        print(f"Error al procesar el comentario: {e}")
+        logger.error("Error al procesar el comentario (tipo=%s).", type(e).__name__)
 
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Error interno del servidor. Por favor verificar departamento seleccionado o contactar soporte."
         )
 
@@ -141,12 +134,15 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         for index, row in enumerate(reader, start=1):
             totals["total_rows"] += 1
             try:
-                texto = row.get("text_content")
-                if not texto or len(texto) < 5 or len(texto) > 3000:
+                texto = (row.get("text_content") or "").strip()
+                if len(texto) < 5 or len(texto) > 3000:
                     totals["skipped_rows"] += 1
                     continue
 
-                is_anon = str(row.get("is_anonymous", "True")).strip().lower() == "true"
+                raw_anonymous = str(row.get("is_anonymous", "true")).strip().casefold()
+                if raw_anonymous not in {"true", "1", "yes", "si", "sí"}:
+                    raise ValueError("El MVP solo admite comentarios anónimos; is_anonymous debe ser true.")
+                is_anon = True
                 dep_id_raw = (row.get("department_id") or "").strip()
                 if dep_id_raw and not dep_id_raw.isdigit():
                     raise ValueError("department_id debe ser un entero.")
@@ -177,14 +173,27 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                     db.add(KeyPhrase(analysis_id=new_analysis.id, phrase=phrase))
 
                 if ai_results["metadata_ai"].get("risk_burnout", False):
-                    db.add(Alert(
+                    alert = Alert(
                         feedback_id=new_feedback.id,
                         risk_level="ALTO",
                         reason=ai_results["metadata_ai"].get("red_flag_reason", "Riesgo detectado en carga masiva")
-                    ))
+                    )
+                    db.add(alert)
 
                 db.commit()
-                totals["processed_rows"] += 1
+                analysis_unavailable = (
+                    ai_results["sentiment_label"] == "NO_DISPONIBLE"
+                    or ai_results["metadata_ai"].get("is_simulation", False)
+                )
+                if analysis_unavailable:
+                    totals["failed_rows"] += 1
+                    if len(errors) < 10:
+                        errors.append(f"Fila {index}: análisis de IA no disponible")
+                else:
+                    totals["processed_rows"] += 1
+                if ai_results["metadata_ai"].get("risk_burnout", False):
+                    db.refresh(alert)
+                    send_alert_email(alert_id=alert.id, reason=alert.reason)
             except Exception as row_error:
                 db.rollback()
                 totals["failed_rows"] += 1
@@ -210,7 +219,7 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
     finally:
         db.close()
 
-@router.post("/upload-csv")
+@router.post("/upload-csv", status_code=status.HTTP_202_ACCEPTED)
 async def upload_feeback_csv(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -222,7 +231,7 @@ async def upload_feeback_csv(
     """
     # Verificacion estricta de roles
     rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr"]:
+    if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo Recursos Humanos y Administradores pueden realizar cargas masivas."
@@ -268,7 +277,7 @@ def get_csv_import_status(
     current_user: dict = Depends(verify_token)
 ):
     rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr"]:
+    if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo Recursos Humanos y Administradores pueden consultar cargas masivas."
@@ -304,7 +313,7 @@ def get_executive_summary(
 
     # Validacion de rol (Solo Directivos o RH)
     rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr", "executive"]:
+    if rol_usuario not in ["admin", "hr", "executive", "analyst"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Solo roles directivos o RH pueden generar resúmenes."
@@ -312,10 +321,13 @@ def get_executive_summary(
 
     # Consulta los comentarios más recientes.
     query = db.query(FeedbackEntry)
-    if department_id:
+    if department_id is not None:
         query = query.filter(FeedbackEntry.department_id == department_id)
 
-    comentarios = query.order_by(FeedbackEntry.created_at.desc()).limit(50).all()
+    comentarios = query.filter(
+        FeedbackEntry.content_text.isnot(None),
+        func.length(func.trim(FeedbackEntry.content_text)) > 0,
+    ).order_by(FeedbackEntry.created_at.desc()).limit(50).all()
 
     if not comentarios:
         return {
@@ -324,16 +336,26 @@ def get_executive_summary(
             "total_analyzed": 0
         }
 
-    # Concatenado de todos los textos en un bloque con viñetas
-    textos_concatenados = "\n- ".join([c.content_text for c in comentarios if c.content_text])
+    if len(comentarios) < 5:
+        return {
+            "status": "insufficient_data",
+            "executive_summary": "Se requieren al menos 5 comentarios para generar un resumen agregado.",
+            "total_analyzed": len(comentarios),
+        }
+
+    # Re-sanitizar protege también los registros históricos y limitar el lote
+    # mantiene acotado el costo y el tiempo de la llamada al proveedor.
+    textos_concatenados = "\n- ".join(
+        sanitize_text(c.content_text) for c in comentarios
+    )[:20000]
 
     # Llamado a Azure OpenAI
     resumen_ia = generate_executive_summary(textos_concatenados)
 
     return {
-        "status": "success",
+        "status": "success" if resumen_ia else "unavailable",
         "total_analyzed": len(comentarios),
-        "executive_summary": resumen_ia
+        "executive_summary": resumen_ia or "No se pudo generar el resumen: el servicio de IA no está disponible.",
     }
 
 @router.get("/analytics")
@@ -342,14 +364,15 @@ def get_dashboard_analytics(
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
-    if current_user.get("role") not in ["admin", "hr", "executive"]:
+
+    if current_user.get("role") not in ["admin", "hr", "executive", "analyst"]:
         raise HTTPException(status_code=403, detail="Acceso denegado.")
 
     query = db.query(SentimentAnalysis).join(
         FeedbackEntry, SentimentAnalysis.feedback_entry_id == FeedbackEntry.id
     )
 
-    if department_id:
+    if department_id is not None:
         query = query.filter(FeedbackEntry.department_id == department_id)
 
     valid_query = query.filter(SentimentAnalysis.polarity_score.isnot(None))
@@ -376,6 +399,160 @@ def get_dashboard_analytics(
         "total_responses": total_responses,
         "average_polarity": round(avg_polarity, 2) if avg_polarity is not None else None,
         "distribution": dist_dict
+    }
+
+@router.get("/stats")
+def get_dashboard_stats(
+    department_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_token)
+):
+    """
+    Devuelve métricas agregadas para el panel, sin exponer comentarios.
+    """
+    if current_user.get("role") not in ["admin", "hr", "executive", "analyst"]:
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(status_code=400, detail="start_date no puede ser posterior a end_date.")
+
+    query = db.query(
+        SentimentAnalysis,
+        FeedbackEntry.department_id,
+        Department.name,
+        FeedbackEntry.created_at,
+    ).join(
+        FeedbackEntry, SentimentAnalysis.feedback_entry_id == FeedbackEntry.id
+    ).outerjoin(Department, FeedbackEntry.department_id == Department.id).filter(
+        SentimentAnalysis.polarity_score.isnot(None)
+    )
+
+    if department_id is not None:
+        query = query.filter(FeedbackEntry.department_id == department_id)
+    if start_date:
+        query = query.filter(
+            FeedbackEntry.created_at >= datetime.combine(start_date, time.min, tzinfo=timezone.utc)
+        )
+    if end_date:
+        query = query.filter(
+            FeedbackEntry.created_at < datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        )
+
+    rows = query.all()
+    total_responses = len(rows)
+    filters = {
+        "department_id": department_id,
+        "start_date": start_date,
+        "end_date": end_date,
+        "minimum_sample": 5,
+    }
+    if total_responses < 5:
+        return {
+            "status": "insufficient_data",
+            "total_responses": 0 if total_responses == 0 else None,
+            "filters": filters,
+            "distribution": {},
+            "average_polarity": None,
+            "department_averages": [],
+            "emotions": [],
+            "organizational_axes": [],
+            "key_phrases": [],
+            "daily_trend": [],
+        }
+
+    label_counts = {}
+    department_totals = {}
+    emotion_counts = {}
+    axis_counts = {}
+    daily_totals = {}
+    polarity_sum = 0.0
+
+    for analysis, row_department_id, department_name, created_at in rows:
+        polarity_sum += analysis.polarity_score
+        label = analysis.sentiment_label or "Sin clasificar"
+        label_counts[label] = label_counts.get(label, 0) + 1
+
+        if row_department_id is not None:
+            item = department_totals.setdefault(
+                row_department_id,
+                {"department_id": row_department_id, "department": department_name or "Sin nombre", "count": 0, "sum": 0.0},
+            )
+            item["count"] += 1
+            item["sum"] += analysis.polarity_score
+
+        day = created_at.date().isoformat() if created_at else "Sin fecha"
+        day_item = daily_totals.setdefault(day, {"count": 0, "sum": 0.0})
+        day_item["count"] += 1
+        day_item["sum"] += analysis.polarity_score
+
+        metadata = analysis.metadata_ai or {}
+        for emotion in set(metadata.get("emotions") or []):
+            if isinstance(emotion, str) and emotion.strip():
+                emotion_counts[emotion.strip()] = emotion_counts.get(emotion.strip(), 0) + 1
+        for axis in set(metadata.get("organizational_axes") or []):
+            if isinstance(axis, str) and axis.strip():
+                axis_counts[axis.strip()] = axis_counts.get(axis.strip(), 0) + 1
+
+    def ranked_items(counter, minimum_count=2):
+        return [
+            {"name": name, "count": count}
+            for name, count in sorted(counter.items(), key=lambda item: (-item[1], item[0].casefold()))
+            if count >= minimum_count
+        ][:10]
+
+    phrase_query = db.query(
+        func.lower(func.trim(KeyPhrase.phrase)).label("phrase"),
+        func.count(func.distinct(SentimentAnalysis.id)).label("frequency"),
+    ).join(
+        SentimentAnalysis, KeyPhrase.analysis_id == SentimentAnalysis.id
+    ).join(
+        FeedbackEntry, SentimentAnalysis.feedback_entry_id == FeedbackEntry.id
+    ).filter(
+        SentimentAnalysis.polarity_score.isnot(None),
+        func.length(func.trim(KeyPhrase.phrase)) > 0,
+    )
+    if department_id is not None:
+        phrase_query = phrase_query.filter(FeedbackEntry.department_id == department_id)
+    if start_date:
+        phrase_query = phrase_query.filter(
+            FeedbackEntry.created_at >= datetime.combine(start_date, time.min, tzinfo=timezone.utc)
+        )
+    if end_date:
+        phrase_query = phrase_query.filter(
+            FeedbackEntry.created_at < datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        )
+    phrase_key = func.lower(func.trim(KeyPhrase.phrase))
+    phrases = phrase_query.group_by(phrase_key).having(
+        func.count(func.distinct(SentimentAnalysis.id)) >= 2
+    ).order_by(func.count(func.distinct(SentimentAnalysis.id)).desc(), phrase_key).limit(10).all()
+
+    return {
+        "status": "success",
+        "total_responses": total_responses,
+        "filters": filters,
+        "distribution": label_counts,
+        "average_polarity": round(polarity_sum / total_responses, 2),
+        "department_averages": [
+            {
+                "department_id": item["department_id"],
+                "department": item["department"],
+                "total_responses": item["count"],
+                "average_polarity": round(item["sum"] / item["count"], 2),
+            }
+            for item in sorted(department_totals.values(), key=lambda value: value["department"].casefold())
+            if item["count"] >= 5
+        ],
+        "emotions": ranked_items(emotion_counts),
+        "organizational_axes": ranked_items(axis_counts),
+        "key_phrases": [
+            {"name": phrase, "count": frequency} for phrase, frequency in phrases
+        ],
+        "daily_trend": [
+            {"date": day, "total_responses": item["count"], "average_polarity": round(item["sum"] / item["count"], 2)}
+            for day, item in sorted(daily_totals.items())[-30:]
+            if item["count"] >= 5
+        ],
     }
 
 @router.get("/departments")

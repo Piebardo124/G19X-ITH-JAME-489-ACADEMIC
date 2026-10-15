@@ -4,9 +4,35 @@ import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+function ListaMetricas({ titulo, elementos = [] }) {
+  const maximo = Math.max(...elementos.map((elemento) => elemento.count || elemento.total_responses || 0), 1);
+
+  return (
+    <section style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+      <h4 style={{ margin: '0 0 12px', color: '#334155' }}>{titulo}</h4>
+      {elementos.length === 0 ? (
+        <p style={{ margin: 0, color: '#64748b' }}>Sin datos suficientes.</p>
+      ) : elementos.map((elemento) => {
+        const cantidad = elemento.count || elemento.total_responses || 0;
+        return (
+          <div key={elemento.name || elemento.department_id || elemento.date} style={{ marginBottom: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '14px' }}>
+              <span>{elemento.name || elemento.department || elemento.date}</span>
+              <strong>{elemento.average_polarity != null ? `${elemento.average_polarity > 0 ? '+' : ''}${elemento.average_polarity}` : cantidad}</strong>
+            </div>
+            <div aria-hidden="true" style={{ height: '7px', marginTop: '4px', backgroundColor: '#e2e8f0', borderRadius: '5px' }}>
+              <div style={{ height: '100%', width: `${Math.max((cantidad / maximo) * 100, 3)}%`, backgroundColor: '#3b82f6', borderRadius: '5px' }} />
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 function Dashboard() {
   const role = localStorage.getItem('role');
-  const puedeGestionarAlertas = ['admin', 'hr'].includes(role);
+  const puedeGestionarAlertas = ['admin', 'hr', 'analyst'].includes(role);
   const tituloPanel = role === 'executive'
     ? 'Panel Ejecutivo'
     : puedeGestionarAlertas ? 'Panel de Recursos Humanos' : 'Panel';
@@ -17,6 +43,10 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [analiticas, setAnaliticas] = useState(null);
   const [errorAnaliticas, setErrorAnaliticas] = useState('');
+  const [departamentos, setDepartamentos] = useState([]);
+  const [departamentoFiltro, setDepartamentoFiltro] = useState('');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
 
   // Estado para la subida de archivos CSV
   const [archivoCsv, setArchivoCsv] = useState(null);
@@ -35,8 +65,12 @@ function Dashboard() {
       }
 
       const headers = { Authorization: `Bearer ${token}` };
+      const params = {};
+      if (departamentoFiltro) params.department_id = departamentoFiltro;
+      if (fechaInicio) params.start_date = fechaInicio;
+      if (fechaFin) params.end_date = fechaFin;
       const solicitudes = [
-        axios.get(`${API_BASE_URL}/api/v1/nlp/analytics`, { headers }),
+        axios.get(`${API_BASE_URL}/api/v1/nlp/stats`, { headers, params }),
       ];
       if (puedeGestionarAlertas) {
         solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/alerts`, { headers }));
@@ -46,6 +80,7 @@ function Dashboard() {
       const resultadoAnaliticas = resultados[0];
       if (resultadoAnaliticas.status === 'fulfilled') {
         setAnaliticas(resultadoAnaliticas.value.data);
+        setErrorAnaliticas('');
       } else {
         const err = resultadoAnaliticas.reason;
         setErrorAnaliticas(err.response?.data?.detail || 'Analítica no disponible');
@@ -75,7 +110,13 @@ function Dashboard() {
     };
 
     obtenerPanel();
-  }, [navigate, puedeGestionarAlertas]);
+  }, [navigate, puedeGestionarAlertas, departamentoFiltro, fechaInicio, fechaFin]);
+
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/v1/nlp/departments`)
+      .then((respuesta) => setDepartamentos(respuesta.data))
+      .catch((err) => console.error('No se pudieron cargar los departamentos:', err.message));
+  }, []);
 
   useEffect(() => {
     if (!csvImportId) return undefined;
@@ -128,7 +169,7 @@ function Dashboard() {
     navigate('/login');
   };
 
-  
+
   // Conector de Endpoint PATCH
   const marcarComoAtendida = async (id) => {
     try {
@@ -140,12 +181,12 @@ function Dashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setAlertas(alertas.map(alerta => 
+      setAlertas(alertas.map(alerta =>
         alerta.id === id ? { ...alerta, status: 'CLOSED' } : alerta
       ));
 
     } catch (err) {
-      console.error("Error al actualizar la alerta:", err);
+      console.error("Error al actualizar la alerta:", err.message);
       alert("Hubo un error al intentar actualizar el estatus.");
     }
   };
@@ -177,7 +218,7 @@ function Dashboard() {
       // Reseteo campo de archivo en HTML
       document.getElementById('csvInput').value = '';
     } catch (err) {
-      console.error("Error al subir CSV:", err);
+      console.error("Error al subir CSV:", err.message);
       const errorDetail = err.response?.data?.detail || "Error desconocido al procesar el archivo.";
       setMensajeCsv(`Error: ${errorDetail}`);
     } finally {
@@ -189,7 +230,7 @@ function Dashboard() {
     <div style={{ maxWidth: '800px', margin: '50px auto', fontFamily: 'sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>{tituloPanel}</h2>
-        <button 
+        <button
           onClick={cerrarSesion}
           style={{ padding: '8px 12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
         >
@@ -198,55 +239,88 @@ function Dashboard() {
       </div>
       <p style={{ color: '#64748b' }}>Monitoreo de incidencias y riesgo de burnout.</p>
 
-      {/* Panel Analítico Resumen */}
-      <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px', display: 'flex', gap: '20px', justifyContent: 'space-around' }}>
+      {/* Panel de sentimiento con filtros aplicados a todas las métricas */}
+      <section style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
+        <h3 style={{ marginTop: 0, color: '#1e293b' }}>Métricas de sentimiento</h3>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Departamento
+            <select value={departamentoFiltro} onChange={(e) => setDepartamentoFiltro(e.target.value)} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '5px' }}>
+              <option value="">Todos</option>
+              {departamentos.map((departamento) => <option key={departamento.id} value={departamento.id}>{departamento.name}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Desde
+            <input type="date" value={fechaInicio} max={fechaFin || undefined} onChange={(e) => setFechaInicio(e.target.value)} style={{ padding: '7px', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
+          </label>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Hasta
+            <input type="date" value={fechaFin} min={fechaInicio || undefined} onChange={(e) => setFechaFin(e.target.value)} style={{ padding: '7px', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
+          </label>
+        </div>
           {errorAnaliticas ? (
-              <p style={{ color: '#b45309', margin: 0, fontWeight: 'bold' }}>{errorAnaliticas}</p>
+          <p style={{ color: '#b45309', margin: 0, fontWeight: 'bold' }}>{errorAnaliticas}</p>
           ) : analiticas ? (
-              <>
-                  <div style={{ textAlign: 'center' }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#334155' }}>Volumen Global</h3>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#2563eb' }}>{analiticas.total_responses}</p>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#334155' }}>IGS Promedio</h3>
-                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: analiticas.average_polarity == null ? '#64748b' : analiticas.average_polarity >= 0.25 ? '#059669' : analiticas.average_polarity <= -0.25 ? '#dc2626' : '#d97706' }}>
-                          {analiticas.average_polarity == null ? 'Sin datos' : `${analiticas.average_polarity > 0 ? '+' : ''}${analiticas.average_polarity}`}
-                      </p>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#334155' }}>Distribución</h3>
-                      <div style={{ display: 'flex', gap: '10px', fontSize: '14px', fontWeight: 'bold' }}>
-                          <span style={{ color: '#059669' }}>Pos: {analiticas.distribution?.Positivo || 0}</span>
-                          <span style={{ color: '#d97706' }}>Neu: {analiticas.distribution?.Neutral || 0}</span>
-                          <span style={{ color: '#dc2626' }}>Neg: {analiticas.distribution?.Negativo || 0}</span>
-                      </div>
-                  </div>
-              </>
+          analiticas.status === 'insufficient_data' ? (
+            <p style={{ color: '#92400e', backgroundColor: '#fef3c7', padding: '12px', borderRadius: '6px' }}>
+              Se requieren al menos 5 comentarios analizados para mostrar agregados.
+            </p>
           ) : (
-              <p style={{ margin: 0, color: '#64748b' }}>Cargando analíticas...</p>
+            <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'space-around', marginBottom: '18px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: '0 0 8px', color: '#334155' }}>Respuestas analizadas</h4>
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#2563eb' }}>{analiticas.total_responses}</p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: '0 0 8px', color: '#334155' }}>Polaridad promedio</h4>
+                  <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: analiticas.average_polarity >= 0.25 ? '#059669' : analiticas.average_polarity <= -0.25 ? '#dc2626' : '#d97706' }}>
+                    {analiticas.average_polarity > 0 ? '+' : ''}{analiticas.average_polarity}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <h4 style={{ margin: '0 0 8px', color: '#334155' }}>Distribución</h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '14px', fontWeight: 'bold' }}>
+                    <span style={{ color: '#059669' }}>Positivo: {analiticas.distribution?.Positivo || 0}</span>
+                    <span style={{ color: '#d97706' }}>Neutral: {analiticas.distribution?.Neutral || 0}</span>
+                    <span style={{ color: '#dc2626' }}>Negativo: {analiticas.distribution?.Negativo || 0}</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                <ListaMetricas titulo="Emociones frecuentes" elementos={analiticas.emotions} />
+                <ListaMetricas titulo="Ejes organizacionales" elementos={analiticas.organizational_axes} />
+                <ListaMetricas titulo="Frases clave frecuentes" elementos={analiticas.key_phrases} />
+                <ListaMetricas titulo="Polaridad por departamento" elementos={analiticas.department_averages} />
+                <ListaMetricas titulo="Tendencia diaria (días con muestra mínima)" elementos={analiticas.daily_trend} />
+              </div>
+            </>
+          )
+          ) : (
+          <p style={{ margin: 0, color: '#64748b' }}>Cargando métricas...</p>
           )}
-      </div>
+      </section>
 
       {puedeGestionarAlertas && <>
       {/* Panel de Carga Masiva (CSV) */}
       <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
         <h4 style={{ marginTop: '0', color: '#334155' }}>Carga Masiva de Comentarios Históricos</h4>
         <form onSubmit={manejarSubidaCsv} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input 
+          <input
             id="csvInput"
-            type="file" 
+            type="file"
             accept=".csv"
             onChange={(e) => setArchivoCsv(e.target.files[0])}
             style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '5px', backgroundColor: '#ffffff', cursor: 'pointer' }}
           />
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={subiendoCsv || !archivoCsv}
-            style={{ 
-              padding: '10px 15px', 
-              backgroundColor: subiendoCsv ? '#94a3b8' : '#10b981', 
-              color: 'white', border: 'none', borderRadius: '5px', 
+            style={{
+              padding: '10px 15px',
+              backgroundColor: subiendoCsv ? '#94a3b8' : '#10b981',
+              color: 'white', border: 'none', borderRadius: '5px',
               cursor: subiendoCsv || !archivoCsv ? 'not-allowed' : 'pointer',
               fontWeight: 'bold'
             }}

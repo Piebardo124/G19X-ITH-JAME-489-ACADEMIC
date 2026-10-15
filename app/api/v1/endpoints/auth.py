@@ -1,8 +1,6 @@
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from passlib.context import CryptContext
 
 from app.db.database import get_db
@@ -13,27 +11,6 @@ router = APIRouter()
 
 # Configuración para verificar contraseñas almacenadas.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-class UserRegister(BaseModel):
-    email: str
-    password: str
-
-
-#@router.post("/register-admin")
-#def create_admin_user(user: UserRegister, db: Session = Depends(get_db)):
-#    """Crea una cuenta de administrador para la instalación local."""
-#    if db.query(User).filter(User.email == user.email).first():
-#        raise HTTPException(status_code=400, detail="El correo ya está registrado.")
-#    admin = User(
-#        user_id=str(uuid.uuid4()),
-#        email=user.email,
-#        role="admin",
-#        hashed_password=pwd_context.hash(user.password),
-#    )
-#    db.add(admin)
-#    db.commit()
-#   return {"message": "Administrador creado. Ya puedes iniciar sesión."}
-
 
 @router.post("/login")
 def login_for_access_token(

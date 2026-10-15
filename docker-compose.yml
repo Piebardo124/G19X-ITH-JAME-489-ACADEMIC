@@ -12,7 +12,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: dockerfile
     ports:
       - "8000:8000"
     volumes:

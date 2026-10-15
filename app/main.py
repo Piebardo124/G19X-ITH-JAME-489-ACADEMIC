@@ -1,4 +1,5 @@
 import time
+import logging
 from fastapi import FastAPI
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
@@ -9,14 +10,16 @@ from app.db.database import engine, SessionLocal
 from app.db import models
 from app.db.models import Department
 
+logger = logging.getLogger(__name__)
+
 def init_db():
     for intento in range(5):
         try:
             models.Base.metadata.create_all(bind=engine)
-            print("Tablas de la base de datos listas.")
+            logger.info("Tablas de la base de datos listas.")
             return
         except OperationalError:
-            print(f"Esperando a que PostgreSQL esté disponible (intento {intento + 1}/5)...")
+            logger.warning("Esperando a PostgreSQL (intento %s/5).", intento + 1)
             time.sleep(5)
     raise Exception("No se pudo conectar a la base de datos después de 5 intentos. Verifica que el contenedor de PostgreSQL esté en funcionamiento y que las credenciales sean correctas.")
 
@@ -34,7 +37,7 @@ def seed_departments():
             ]
             db.add_all(departments)
             db.commit()
-            print("Se crearon los departamentos iniciales.")
+            logger.info("Se crearon los departamentos iniciales.")
         # Los IDs de la semilla son explícitos; sincronizar la secuencia evita
         # que el siguiente INSERT automático reutilice uno ya ocupado.
         db.execute(text("""
@@ -48,18 +51,18 @@ def seed_departments():
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"Error al crear departamentos: {e}")
+        logger.error("Error al crear departamentos (tipo=%s).", type(e).__name__)
         raise e
     finally:
         db.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Iniciando la aplicación.")
+    logger.info("Iniciando la aplicación.")
     init_db()
     seed_departments()
     yield
-    print("Cerrando la aplicación.")
+    logger.info("Cerrando la aplicación.")
 app = FastAPI(
     title="PluriOne Sentiment Analysis API",
     description="API RESTful para el analisis de sentimientos de comentarios de empleados",

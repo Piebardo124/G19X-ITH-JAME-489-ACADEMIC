@@ -20,7 +20,7 @@ class AlertResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# EndPoit
+# Endpoints 
 @router.get("/", response_model=List[AlertResponse])
 def list_alerts(
     status_filter: Optional[str] = None,
@@ -35,7 +35,7 @@ def list_alerts(
     """
     # Validacion que el usuario tenga el rol correcto.
     rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr"]:
+    if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Solo Recursos Humanos y Administradores pueden ver la bandeja"
@@ -46,7 +46,7 @@ def list_alerts(
         query = query.filter(Alert.status == status_filter)
     if risk_level:
         query = query.filter(Alert.risk_level == risk_level)
-    if department_id:
+    if department_id is not None:
         query = query.join(FeedbackEntry).filter(FeedbackEntry.department_id == department_id)
 
     # Consulta a PostgreSQL
@@ -72,7 +72,7 @@ def update_alert_status(
     """
     # Validador de rol
     rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr"]:
+    if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Solo Recursos Humanos y Administradores pueden gestionar tickets."
@@ -100,24 +100,3 @@ def update_alert_status(
 
     # Alerta actualizada
     return db_alert
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
