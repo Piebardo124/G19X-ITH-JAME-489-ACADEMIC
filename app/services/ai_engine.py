@@ -1,4 +1,5 @@
 import os
+import math
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,7 +10,13 @@ load_dotenv()
 
 # Define la estructura que devuelve el análisis.
 class AIAnalysisResult(BaseModel):
-    polarity_score: float = Field (..., description="Puntuacion de -1.0 (muy negativo) a 1.0 (muy positivo)")
+    polarity_score: float = Field(
+        ...,
+        ge=-1.0,
+        le=1.0,
+        allow_inf_nan=False,
+        description="Puntuación de -1.0 (muy negativo) a 1.0 (muy positivo)",
+    )
     sentiment_label: str = Field(..., description = "Positivo, Negativo o Neutral")
     emotions_detected: List[str] = Field(..., description = "Lista de emociones detectadas, ej: frustración, alegría")
     organizational_axes: List[str] = Field(..., description = "Ejes afectados. Solo usa: Liderazgo y management, Carga de trabajo, Ambiente laboral, Compensaciones, Herramientas")
@@ -55,10 +62,11 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         chain = prompt | structured_llm
         texto_seguro = text.replace("###", "")
         result = chain.invoke({"texto_empleado": texto_seguro})
+        etiqueta_estricta = enforce_polarity_thresholds(result.polarity_score)
 
         return {
             "polarity_score": result.polarity_score,
-            "sentiment_label": result.sentiment_label,
+            "sentiment_label": etiqueta_estricta,
             "key_phrases": result.key_phrases,
             "metadata_ai": {
                 "emotions": result.emotions_detected,
@@ -91,6 +99,19 @@ def _fallback_simulation(text: str) -> dict:
             "error_detail": "Motor de IA inaccesible. Análisis pospuesto."
         }
     }
+
+def enforce_polarity_thresholds(score: float) -> str:
+    if score is None or not math.isfinite(score) or not -1.0 <= score <= 1.0:
+        return "NO_DISPONIBLE"
+
+    score_rounded = round(score, 2)  # Redondea a dos decimales para consistencia
+
+    if score_rounded <= -0.25:
+        return "Negativo"
+    elif score_rounded >= 0.25:
+        return "Positivo"
+    else:
+        return "Neutral"
 
 def generate_executive_summary(text_batch: str) -> str:
     """

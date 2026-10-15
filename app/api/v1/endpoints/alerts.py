@@ -1,11 +1,11 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from app.db.database import get_db
 from app.core.security import verify_token
-from app.db.models import Alert
+from app.db.models import Alert, FeedbackEntry
 
 router = APIRouter()
 
@@ -23,6 +23,9 @@ class AlertResponse(BaseModel):
 # EndPoit
 @router.get("/", response_model=List[AlertResponse])
 def list_alerts(
+    status_filter: Optional[str] = None,
+    risk_level: Optional[str] = None,
+    department_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token) # Token valido
 ):
@@ -37,12 +40,18 @@ def list_alerts(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Solo Recursos Humanos y Administradores pueden ver la bandeja"
         )
+    query = db.query(Alert)
+
+    if status_filter:
+        query = query.filter(Alert.status == status_filter)
+    if risk_level:
+        query = query.filter(Alert.risk_level == risk_level)
+    if department_id:
+        query = query.join(FeedbackEntry).filter(FeedbackEntry.department_id == department_id)
 
     # Consulta a PostgreSQL
     # Alertas ordenadas
-    alerts = db.query(Alert).all()
-
-    # Retorno de lista
+    alerts = query.order_by(Alert.created_at.desc()).all()
     return alerts
 
 # Esquema de actualizacion

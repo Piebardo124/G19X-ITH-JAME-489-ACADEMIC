@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db.database import get_db, SessionLocal
 from app.db.models import FeedbackEntry, SentimentAnalysis, Alert, KeyPhrase, CSVImport
 from app.schemas.feedback import FeedbackCreate, FeedbackResponse
@@ -123,7 +124,7 @@ def analyze_feedback(
             status_code=500, 
             detail="Error interno del servidor. Por favor verificar departamento seleccionado o contactar soporte."
         )
-    
+
 def process_csv_background(file_content: str, import_id: uuid.UUID):
     """Procesa el CSV y persiste un resumen consultable de la importación."""
     db = SessionLocal()
@@ -333,6 +334,48 @@ def get_executive_summary(
         "status": "success",
         "total_analyzed": len(comentarios),
         "executive_summary": resumen_ia
+    }
+
+@router.get("/analytics")
+def get_dashboard_analytics(
+    department_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(verify_token)
+):
+    if current_user.get("role") not in ["admin", "hr", "executive"]:
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+
+    query = db.query(SentimentAnalysis).join(
+        FeedbackEntry, SentimentAnalysis.feedback_entry_id == FeedbackEntry.id
+    )
+
+    if department_id:
+        query = query.filter(FeedbackEntry.department_id == department_id)
+
+    valid_query = query.filter(SentimentAnalysis.polarity_score.isnot(None))
+    total_responses = valid_query.count()
+    if 0 < total_responses < 5:
+        raise HTTPException(
+            status_code=403,
+            detail="Volumen insuficiente. Se requieren al menos 5 respuestas para mostrar datos agregados."
+        )
+
+    if total_responses == 0:
+        return {"total_responses": 0, "average_polarity": None, "distribution": {}}
+
+    avg_polarity = valid_query.with_entities(func.avg(SentimentAnalysis.polarity_score)).scalar()
+
+    distribucion = valid_query.with_entities(
+        SentimentAnalysis.sentiment_label,
+        func.count(SentimentAnalysis.id)
+    ).group_by(SentimentAnalysis.sentiment_label).all()
+
+    dist_dict = {label.capitalize() if label else "No_Disponible": count for label, count in distribucion}
+
+    return {
+        "total_responses": total_responses,
+        "average_polarity": round(avg_polarity, 2) if avg_polarity is not None else None,
+        "distribution": dist_dict
     }
 
 @router.get("/departments")

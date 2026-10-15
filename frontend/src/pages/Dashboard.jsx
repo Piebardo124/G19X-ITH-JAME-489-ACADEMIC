@@ -5,10 +5,18 @@ import { useNavigate } from 'react-router-dom';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function Dashboard() {
+  const role = localStorage.getItem('role');
+  const puedeGestionarAlertas = ['admin', 'hr'].includes(role);
+  const tituloPanel = role === 'executive'
+    ? 'Panel Ejecutivo'
+    : puedeGestionarAlertas ? 'Panel de Recursos Humanos' : 'Panel';
+
   // Estados para la bandeja de alertas
   const [alertas, setAlertas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [analiticas, setAnaliticas] = useState(null);
+  const [errorAnaliticas, setErrorAnaliticas] = useState('');
 
   // Estado para la subida de archivos CSV
   const [archivoCsv, setArchivoCsv] = useState(null);
@@ -19,38 +27,55 @@ function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const obtenerAlertas = async () => {
-      try {
-        // Pedir token de la memoria.
-        const token = localStorage.getItem('token');
+    const obtenerPanel = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
 
-        // Seguridad para que no entren por "casualidad"
-        if(!token) {
-          navigate('/login');
-          return;
-        }
+      const headers = { Authorization: `Bearer ${token}` };
+      const solicitudes = [
+        axios.get(`${API_BASE_URL}/api/v1/nlp/analytics`, { headers }),
+      ];
+      if (puedeGestionarAlertas) {
+        solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/alerts`, { headers }));
+      }
 
-        // Peticion GET a backend envaindo el token en Heades
-        const respuesta = await axios.get(`${API_BASE_URL}/api/v1/alerts`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        setAlertas(respuesta.data);
-        setCargando(false);
-      } catch (err) {
-        console.error("Error al obtener alertas:", err);
-        setError('Acceso denegado o sesion expirada.');
-        setCargando(false);
-
-        if(err.response && err.response.status == 401) {
+      const resultados = await Promise.allSettled(solicitudes);
+      const resultadoAnaliticas = resultados[0];
+      if (resultadoAnaliticas.status === 'fulfilled') {
+        setAnaliticas(resultadoAnaliticas.value.data);
+      } else {
+        const err = resultadoAnaliticas.reason;
+        setErrorAnaliticas(err.response?.data?.detail || 'Analítica no disponible');
+        if (err.response?.status === 401) {
           localStorage.removeItem('token');
+          localStorage.removeItem('role');
           navigate('/login');
         }
       }
+
+      if (puedeGestionarAlertas) {
+        const resultadoAlertas = resultados[1];
+        if (resultadoAlertas.status === 'fulfilled') {
+          setAlertas(resultadoAlertas.value.data);
+        } else {
+          const err = resultadoAlertas.reason;
+          setError('No se pudieron cargar las alertas.');
+          if (err.response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            navigate('/login');
+          }
+        }
+      }
+
+      setCargando(false);
     };
 
-    obtenerAlertas();
-  }, [navigate]);
+    obtenerPanel();
+  }, [navigate, puedeGestionarAlertas]);
 
   useEffect(() => {
     if (!csvImportId) return undefined;
@@ -108,7 +133,7 @@ function Dashboard() {
   const marcarComoAtendida = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      
+
       // Peticion de actualizacion de FastAPI
       await axios.patch(`${API_BASE_URL}/api/v1/alerts/${id}`,
         { status: 'CLOSED' },
@@ -163,7 +188,7 @@ function Dashboard() {
   return (
     <div style={{ maxWidth: '800px', margin: '50px auto', fontFamily: 'sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Panel de Recursos Humanos</h2>
+        <h2>{tituloPanel}</h2>
         <button 
           onClick={cerrarSesion}
           style={{ padding: '8px 12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
@@ -173,6 +198,37 @@ function Dashboard() {
       </div>
       <p style={{ color: '#64748b' }}>Monitoreo de incidencias y riesgo de burnout.</p>
 
+      {/* Panel Analítico Resumen */}
+      <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px', display: 'flex', gap: '20px', justifyContent: 'space-around' }}>
+          {errorAnaliticas ? (
+              <p style={{ color: '#b45309', margin: 0, fontWeight: 'bold' }}>{errorAnaliticas}</p>
+          ) : analiticas ? (
+              <>
+                  <div style={{ textAlign: 'center' }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#334155' }}>Volumen Global</h3>
+                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: '#2563eb' }}>{analiticas.total_responses}</p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#334155' }}>IGS Promedio</h3>
+                      <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0, color: analiticas.average_polarity == null ? '#64748b' : analiticas.average_polarity >= 0.25 ? '#059669' : analiticas.average_polarity <= -0.25 ? '#dc2626' : '#d97706' }}>
+                          {analiticas.average_polarity == null ? 'Sin datos' : `${analiticas.average_polarity > 0 ? '+' : ''}${analiticas.average_polarity}`}
+                      </p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#334155' }}>Distribución</h3>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '14px', fontWeight: 'bold' }}>
+                          <span style={{ color: '#059669' }}>Pos: {analiticas.distribution?.Positivo || 0}</span>
+                          <span style={{ color: '#d97706' }}>Neu: {analiticas.distribution?.Neutral || 0}</span>
+                          <span style={{ color: '#dc2626' }}>Neg: {analiticas.distribution?.Negativo || 0}</span>
+                      </div>
+                  </div>
+              </>
+          ) : (
+              <p style={{ margin: 0, color: '#64748b' }}>Cargando analíticas...</p>
+          )}
+      </div>
+
+      {puedeGestionarAlertas && <>
       {/* Panel de Carga Masiva (CSV) */}
       <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
         <h4 style={{ marginTop: '0', color: '#334155' }}>Carga Masiva de Comentarios Históricos</h4>
@@ -272,6 +328,7 @@ function Dashboard() {
           </table>
         </div>
       )}
+      </>}
     </div>
   );
 }
