@@ -84,15 +84,20 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         score_seguro = round(result.polarity_score, 2) if result.polarity_score is not None else None
         etiqueta_estricta = enforce_polarity_thresholds(result.polarity_score)
 
+        # Sanitizacion de salidas generadas para evitar fugas de datos.
+        from app.services.sanitization import sanitize_text
+        frases_seguras = [sanitize_text(frase) for frase in result.key_phrases]
+        motivo_seguro = sanitize_text(result.red_flag_reason) if result.red_flag_reason else ""
+
         return {
             "polarity_score": score_seguro,
             "sentiment_label": etiqueta_estricta,
-            "key_phrases": result.key_phrases,
+            "key_phrases": frases_seguras,
             "metadata_ai": {
                 "emotions": result.emotions_detected,
                 "organizational_axes": result.organizational_axes,
                 "risk_burnout": result.risk_burnout,
-                "red_flag_reason": result.red_flag_reason,
+                "red_flag_reason": motivo_seguro,
                 "is_simulation": False
             }
         }
@@ -162,7 +167,8 @@ def generate_executive_summary(text_batch: str) -> str | None:
         chain = prompt | llm
         result = chain.invoke({"comentarios": text_batch})
 
-        return result.content
+        from app.services.sanitization import sanitize_text
+        return sanitize_text(result.content)
     except Exception as e:
         logger.error("Error generando resumen (tipo=%s).", type(e).__name__)
         return None

@@ -281,11 +281,17 @@ function Dashboard() {
                 </div>
                 <div style={{ textAlign: 'center' }}>
                   <h4 style={{ margin: '0 0 8px', color: '#334155' }}>Distribución</h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '14px', fontWeight: 'bold' }}>
-                    <span style={{ color: '#059669' }}>Positivo: {analiticas.distribution?.Positivo || 0}</span>
-                    <span style={{ color: '#d97706' }}>Neutral: {analiticas.distribution?.Neutral || 0}</span>
-                    <span style={{ color: '#dc2626' }}>Negativo: {analiticas.distribution?.Negativo || 0}</span>
-                  </div>
+                  {analiticas.distribution_suppressed ? (
+                    <p style={{ color: '#92400e', fontSize: '13px', fontWeight: 'normal', margin: 0 }}>
+                      Distribución oculta por privacidad: al menos una categoría tiene menos de 5 respuestas.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '14px', fontWeight: 'bold' }}>
+                      <span style={{ color: '#059669' }}>Positivo: {analiticas.distribution?.Positivo || 0}</span>
+                      <span style={{ color: '#d97706' }}>Neutral: {analiticas.distribution?.Neutral || 0}</span>
+                      <span style={{ color: '#dc2626' }}>Negativo: {analiticas.distribution?.Negativo || 0}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>

@@ -20,6 +20,12 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 
+
+def _safe_sentiment_distribution(label_counts: dict[str, int], minimum_count: int = 5):
+    """Suppress the whole distribution when a small category could be inferred."""
+    suppressed = any(count < minimum_count for count in label_counts.values())
+    return ({} if suppressed else dict(label_counts)), suppressed
+
 @router.post("/analyze-feedback", response_model=FeedbackResponse)
 def analyze_feedback(
     feedback: FeedbackCreate,
@@ -494,12 +500,17 @@ def get_dashboard_stats(
             if isinstance(axis, str) and axis.strip():
                 axis_counts[axis.strip()] = axis_counts.get(axis.strip(), 0) + 1
 
-    def ranked_items(counter, minimum_count=2):
+    def ranked_items(counter, minimum_count=5):
         return [
             {"name": name, "count": count}
             for name, count in sorted(counter.items(), key=lambda item: (-item[1], item[0].casefold()))
             if count >= minimum_count
         ][:10]
+
+    # Si una etiqueta no alcanza K=5, ocultar toda la distribución evita que
+    # su conteo pueda deducirse restando las categorías visibles al total.
+    distribucion_segura, distribucion_suprimida = _safe_sentiment_distribution(label_counts)
+
 
     phrase_query = db.query(
         func.lower(func.trim(KeyPhrase.phrase)).label("phrase"),
@@ -524,14 +535,15 @@ def get_dashboard_stats(
         )
     phrase_key = func.lower(func.trim(KeyPhrase.phrase))
     phrases = phrase_query.group_by(phrase_key).having(
-        func.count(func.distinct(SentimentAnalysis.id)) >= 2
+        func.count(func.distinct(SentimentAnalysis.id)) >= 5
     ).order_by(func.count(func.distinct(SentimentAnalysis.id)).desc(), phrase_key).limit(10).all()
 
     return {
         "status": "success",
         "total_responses": total_responses,
         "filters": filters,
-        "distribution": label_counts,
+        "distribution": distribucion_segura,
+        "distribution_suppressed": distribucion_suprimida,
         "average_polarity": round(polarity_sum / total_responses, 2),
         "department_averages": [
             {

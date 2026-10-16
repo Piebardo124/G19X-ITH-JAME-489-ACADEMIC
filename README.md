@@ -75,6 +75,8 @@ La primera ejecución construye la imagen e instala dependencias. Revisa los ser
 docker compose ps
 ~~~
 
+Los servicios `db`, `web` y `frontend` deben aparecer como activos. Si `web` no inicia, revisa `docker compose logs web` y `docker compose logs db`. Compose espera a que el contenedor de PostgreSQL arranque, pero no comprueba su estado de salud; la API hace hasta cinco intentos de conexión al iniciar.
+
 Direcciones locales:
 
 - Buzón: http://localhost:5173/
@@ -107,6 +109,8 @@ docker compose exec web python -m app.create_admin_cli
 
 Escribe el correo y la contraseña cuando se soliciten. La contraseña se almacena con hash bcrypt. Entra al sistema desde http://localhost:5173/login. No hay una ruta pública para registrar administradores.
 
+El asistente CLI no valida una política mínima de contraseña ni limita la creación a un solo administrador. Ejecútalo únicamente desde un entorno controlado y usa una contraseña robusta.
+
 ## Buzón y carga CSV
 
 El buzón es público. Acepta comentarios de 5 a 3000 caracteres y requiere al menos una palabra de dos letras. El departamento es opcional. El texto se sanitiza antes de almacenarlo y analizarlo.
@@ -119,11 +123,11 @@ text_content,is_anonymous,department_id
 "El equipo tiene buena comunicación",true,1
 ~~~
 
-La importación corre en segundo plano dentro del proceso web. Si el backend se reinicia durante la tarea, no existe una cola durable que garantice su reanudación.
+La importación corre en segundo plano dentro del proceso web, procesa filas secuencialmente y no tiene una cola durable. Si el backend se reinicia durante la tarea, no existe garantía de reanudación. El tamaño del archivo está limitado a 5 MB, pero el código no fija un máximo de filas.
 
 ## Métricas y privacidad
 
-El panel filtra por departamento y fechas. Se requieren al menos cinco respuestas analizadas para mostrar agregados; promedios por departamento y tendencia diaria se ocultan si no alcanzan ese mínimo. El endpoint de estadísticas no devuelve el texto de comentarios.
+El panel filtra por departamento y fechas. Los agregados generales se ocultan cuando hay menos de cinco análisis válidos. La distribución por sentimiento se oculta completa si alguna categoría tiene menos de cinco respuestas, para evitar deducir su valor por diferencia. Emociones, ejes, frases clave, promedios por departamento y tendencia diaria sólo muestran grupos con al menos cinco respuestas. El endpoint no devuelve el texto de los comentarios.
 
 Polaridad: negativa hasta -0.25; neutral de -0.24 a +0.24; positiva desde +0.25. Las métricas son descriptivas y dependen de la calidad del análisis de IA.
 
@@ -144,6 +148,10 @@ La documentación interactiva y los esquemas completos están en http://localhos
 | GET /api/v1/alerts/ | Consulta alertas; requiere JWT y rol autorizado. |
 | PATCH /api/v1/alerts/{alert_id} | Actualiza el estado de una alerta; requiere JWT y rol autorizado. |
 
+La bandeja de alertas y la carga CSV están permitidas a `admin`, `hr` y `analyst`. Las métricas aceptan además `executive`. El buzón y el catálogo de departamentos son públicos. No hay actualmente filtros de autorización por departamento asociados a cada usuario.
+
+El endpoint `/api/v1/nlp/summary` no tiene una pantalla propia en el frontend; se consulta mediante API. La exportación de reportes no forma parte de este MVP.
+
 ## Verificaciones
 
 Desde frontend:
@@ -159,6 +167,27 @@ En el contenedor del backend:
 docker compose exec web pip check
 docker compose exec web python -m compileall -q app
 ~~~
+
+Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una validación funcional integral.
+
+La suite de regresión de privacidad se ejecuta desde la raíz con `python -m unittest -v test_privacy`. Cubre sanitización de PII, salidas generadas por IA y supresión de distribuciones pequeñas.
+
+### Recorrido manual para la evaluación
+
+1. Comprueba que `docker compose ps` muestre PostgreSQL, API y frontend activos.
+2. Abre `/docs` y confirma que la API responde.
+3. Crea el usuario inicial con el comando CLI y entra desde `/login`.
+4. Envía comentarios sintéticos desde el buzón. No uses información real de empleados durante una demostración.
+5. Con al menos cinco comentarios que sí hayan sido analizados por Azure OpenAI, comprueba las métricas del dashboard. Si falta la llave o Azure falla, el sistema guarda el comentario como no analizado y no lo incluye en esos agregados.
+6. Envía un comentario de prueba que active una alerta y verifica el registro en la bandeja. Para comprobar la entrega del correo, revisa el buzón de prueba y los logs; que exista una alerta no confirma que el correo haya sido enviado.
+7. Registra el resultado y el entorno de cada prueba. El MVP establece objetivos de latencia, accuracy y recall, pero estos deben medirse aparte con carga y un conjunto etiquetado.
+
+### Diagnóstico rápido
+
+- **La API no inicia:** revisa `JWT_SECRET_KEY`, los valores PostgreSQL y que las tres variables `*_URLENCODED` correspondan a las credenciales codificadas para URL.
+- **El análisis queda como no disponible:** revisa endpoint, llave y nombre del despliegue Azure en `.env`, y consulta `docker compose logs web`.
+- **No llega el correo:** confirma host, puerto, usuario, contraseña SMTP y destinatario; revisa los logs. El sistema no reintenta automáticamente ni guarda el estado de entrega del correo.
+- **No aparece una métrica:** confirma que haya al menos cinco análisis válidos en el rango filtrado; la IA debe haber producido polaridad, no basta con que el comentario esté guardado.
 
 ## Estructura
 
