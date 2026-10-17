@@ -140,17 +140,15 @@ La documentación interactiva y los esquemas completos están en http://localhos
 | POST /api/v1/auth/login | Inicia sesión y devuelve un JWT. |
 | GET /api/v1/nlp/departments | Lista los departamentos. |
 | POST /api/v1/nlp/analyze-feedback | Valida, sanitiza, analiza y guarda un comentario. |
-| GET /api/v1/nlp/analytics | Métricas básicas de volumen, polaridad promedio y distribución. Requiere JWT. |
-| GET /api/v1/nlp/stats | Agregados de sentimiento, departamentos, temas y tendencia. Acepta department_id, start_date y end_date; requiere JWT. |
+| GET /api/v1/nlp/stats | Agregados de sentimiento, temas y tendencia para un departamento y un mes calendario completos; requiere JWT. `department_id=0` representa comentarios sin departamento. |
 | POST /api/v1/nlp/upload-csv | Inicia una importación CSV; requiere JWT y rol autorizado. |
 | GET /api/v1/nlp/upload-csv/{import_id} | Consulta el estado de una importación; requiere JWT y rol autorizado. |
-| GET /api/v1/nlp/summary | Genera un resumen cuando hay datos suficientes; requiere JWT. |
 | GET /api/v1/alerts/ | Consulta alertas; requiere JWT y rol autorizado. |
 | PATCH /api/v1/alerts/{alert_id} | Actualiza el estado de una alerta; requiere JWT y rol autorizado. |
 
 La bandeja de alertas y la carga CSV están permitidas a `admin`, `hr` y `analyst`. Las métricas aceptan además `executive`. El buzón y el catálogo de departamentos son públicos. No hay actualmente filtros de autorización por departamento asociados a cada usuario.
 
-El endpoint `/api/v1/nlp/summary` no tiene una pantalla propia en el frontend; se consulta mediante API. La exportación de reportes no forma parte de este MVP.
+Las métricas se consultan por celdas no solapadas (departamento y mes calendario) para impedir comparaciones entre filtros superpuestos. Si algún día del mes tiene entre una y cuatro respuestas, se oculta toda la tendencia diaria. La distribución de sentimiento también se oculta completa si alguna etiqueta tiene menos de cinco respuestas. Los resúmenes ejecutivos y la exportación no forman parte de este MVP.
 
 ## Verificaciones
 

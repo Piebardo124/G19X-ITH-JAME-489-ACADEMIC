@@ -1,20 +1,24 @@
+import logging
 import sys
 from sqlalchemy import text
 from app.db.database import engine
 
+logger = logging.getLogger(__name__)
+
 def upgrade_database():
-    print("Iniciando verificación y migración de esquema...")
+    logger.info("Iniciando la actualización del esquema de la base de datos.")
     with engine.connect() as conn:
         try:
-            # Ejecución de los cambios
             conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE;"))
             conn.execute(text("ALTER TABLE alerts ADD COLUMN IF NOT EXISTS updated_by VARCHAR;"))
             conn.commit()
-            
-            print("Migración exitosa: transacciones confirmadas. Las columnas updated_at y updated_by están listas.")
-        except Exception as e:
+
+            logger.info("Esquema actualizado correctamente.")
+        except Exception:
             conn.rollback()
-            print(f"Error crítico en migración: {e}")
+            logger.exception("No se pudo actualizar el esquema; se revirtieron los cambios.")
             sys.exit(1)
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     upgrade_database()

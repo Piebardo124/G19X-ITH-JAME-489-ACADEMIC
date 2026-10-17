@@ -217,6 +217,7 @@ KPIs candidatos: volumen de comentarios, distribución/tendencia de polaridad, I
 5. Cifrar comunicaciones, base y respaldos.
 6. Definir retención/borrado para texto, resultados, auditoría y archivos.
 7. Suprimir segmentos de bajo volumen para mitigar reidentificación.
+   En el MVP, las analíticas sólo permiten consultar celdas disjuntas de departamento y mes calendario; se suprimen complementariamente las tendencias diarias cuando algún día tiene menos de cinco respuestas. No se permiten rangos arbitrarios solapados.
 8. No inferir diagnósticos clínicos ni tratar intención estimada como hecho; mantener revisión humana.
 9. Validar región, retención y tratamiento de datos de los servicios Azure antes de producción.
 

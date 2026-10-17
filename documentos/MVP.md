@@ -20,6 +20,7 @@ Demostrar un flujo completo que autentique usuarios localmente, reciba comentari
 - **Pipeline NLP:** FastAPI y LangChain orquestan Azure AI Language y Azure OpenAI. El análisis devuelve polaridad (-1 a +1), etiqueta, emociones, ejes, frases clave y evaluación de riesgo. Pydantic valida estrictamente el JSON.
 - **Persistencia:** PostgreSQL almacena comentarios, análisis, frases clave y alertas.
 - **Gestión y analítica:** dashboard y bandeja de tickets renderizados nativamente en React.js; consulta y actualización de alertas según rol.
+- **Privacidad de agregados:** las métricas se consultan por un único departamento (o comentarios sin departamento) y mes calendario completo; no se permiten filtros de cohortes solapadas. Las categorías con menos de cinco respuestas se ocultan; si un día del mes no alcanza cinco respuestas, se oculta la tendencia diaria completa.
 - **Alertas:** cada comentario de riesgo crítico genera un ticket en PostgreSQL con estado inicial `OPEN`.
 
 ## 3. Out of Scope
@@ -46,7 +47,7 @@ Las métricas de IA se evalúan con el conjunto etiquetado de QA descrito en la 
 ## 5. Notas para cerrar antes de la demo
 
 - Acordar catálogo de ejes: algunos documentos describen cinco y otros seis.
-- Los límites de polaridad documentados se solapan en ±0.25; fijar intervalos no solapados.
+- Los umbrales implementados son: Negativo ≤ -0.25, Neutral entre -0.24 y +0.24, Positivo ≥ +0.25. Mantener esta regla alineada en todos los documentos y pruebas.
 - Confirmar estados de tickets adicionales a `OPEN` y usuarios/roles locales de prueba.
 - Definir retención del texto original y verificar que los comentarios anónimos no sean reidentificables.
 - Medir por separado lectura API e inferencia IA.

@@ -9,7 +9,6 @@ from app.core.security import create_access_token
 
 router = APIRouter()
 
-# Configuración para verificar contraseñas almacenadas.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @router.post("/login")
@@ -17,10 +16,8 @@ def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    # Busca la cuenta por correo electrónico.
     user = db.query(User).filter(User.email == form_data.username).first()
 
-    # Rechaza credenciales incorrectas o cuentas sin contraseña local.
     if not user or not user.hashed_password or not pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -28,7 +25,6 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Incluye el correo y el rol en el token.
     token_data = {
         "sub": user.email,
         "role": user.role
@@ -36,7 +32,6 @@ def login_for_access_token(
 
     access_token = create_access_token(data=token_data)
 
-    # Devuelve el token al frontend.
     return {
         "access_token": access_token,
         "token_type": "bearer",

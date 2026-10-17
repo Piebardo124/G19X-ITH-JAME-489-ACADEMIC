@@ -37,7 +37,6 @@ function Dashboard() {
     ? 'Panel Ejecutivo'
     : puedeGestionarAlertas ? 'Panel de Recursos Humanos' : 'Panel';
 
-  // Estados para la bandeja de alertas
   const [alertas, setAlertas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -45,10 +44,11 @@ function Dashboard() {
   const [errorAnaliticas, setErrorAnaliticas] = useState('');
   const [departamentos, setDepartamentos] = useState([]);
   const [departamentoFiltro, setDepartamentoFiltro] = useState('');
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
+  const [periodoFiltro, setPeriodoFiltro] = useState(() => {
+    const ahora = new Date();
+    return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+  });
 
-  // Estado para la subida de archivos CSV
   const [archivoCsv, setArchivoCsv] = useState(null);
   const [subiendoCsv, setSubiendoCsv] = useState(false);
   const [mensajeCsv, setMensajeCsv] = useState('');
@@ -57,6 +57,7 @@ function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelado = false;
     const obtenerPanel = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -65,56 +66,87 @@ function Dashboard() {
       }
 
       const headers = { Authorization: `Bearer ${token}` };
-      const params = {};
-      if (departamentoFiltro) params.department_id = departamentoFiltro;
-      if (fechaInicio) params.start_date = fechaInicio;
-      if (fechaFin) params.end_date = fechaFin;
-      const solicitudes = [
-        axios.get(`${API_BASE_URL}/api/v1/nlp/stats`, { headers, params }),
-      ];
+      const solicitudes = [];
+      let indiceAnaliticas = null;
+      let indiceAlertas = null;
+
+      if (departamentoFiltro && periodoFiltro) {
+        const [anio, mes] = periodoFiltro.split('-').map(Number);
+        const ultimoDia = new Date(anio, mes, 0).getDate();
+        const params = {
+          department_id: Number(departamentoFiltro),
+          start_date: `${periodoFiltro}-01`,
+          end_date: `${periodoFiltro}-${String(ultimoDia).padStart(2, '0')}`,
+        };
+        indiceAnaliticas = solicitudes.length;
+        solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/nlp/stats`, { headers, params }));
+      } else {
+        setAnaliticas(null);
+        setErrorAnaliticas('Selecciona un departamento y un mes para consultar métricas protegidas.');
+      }
+
       if (puedeGestionarAlertas) {
+        indiceAlertas = solicitudes.length;
         solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/alerts`, { headers }));
       }
 
-      const resultados = await Promise.allSettled(solicitudes);
-      const resultadoAnaliticas = resultados[0];
-      if (resultadoAnaliticas.status === 'fulfilled') {
-        setAnaliticas(resultadoAnaliticas.value.data);
-        setErrorAnaliticas('');
-      } else {
-        const err = resultadoAnaliticas.reason;
-        setErrorAnaliticas(err.response?.data?.detail || 'Analítica no disponible');
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          navigate('/login');
-        }
+      if (solicitudes.length === 0) {
+        setCargando(false);
+        return;
       }
 
-      if (puedeGestionarAlertas) {
-        const resultadoAlertas = resultados[1];
-        if (resultadoAlertas.status === 'fulfilled') {
-          setAlertas(resultadoAlertas.value.data);
-        } else {
-          const err = resultadoAlertas.reason;
-          setError('No se pudieron cargar las alertas.');
-          if (err.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('role');
-            navigate('/login');
+      setCargando(true);
+      const resultados = await Promise.allSettled(solicitudes);
+      if (!cancelado) {
+        if (indiceAnaliticas !== null) {
+          const resultadoAnaliticas = resultados[indiceAnaliticas];
+          if (resultadoAnaliticas.status === 'fulfilled') {
+            setAnaliticas(resultadoAnaliticas.value.data);
+            setErrorAnaliticas('');
+          } else {
+            const err = resultadoAnaliticas.reason;
+            setErrorAnaliticas(err.response?.data?.detail || 'Analítica no disponible');
+            if (err.response?.status === 401) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('role');
+              navigate('/login');
+            }
           }
         }
-      }
 
-      setCargando(false);
+        if (indiceAlertas !== null) {
+          const resultadoAlertas = resultados[indiceAlertas];
+          if (resultadoAlertas.status === 'fulfilled') {
+            setAlertas(resultadoAlertas.value.data);
+          } else {
+            const err = resultadoAlertas.reason;
+            setError('No se pudieron cargar las alertas.');
+            if (err.response?.status === 401) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('role');
+              navigate('/login');
+            }
+          }
+        }
+
+        setCargando(false);
+      }
     };
 
     obtenerPanel();
-  }, [navigate, puedeGestionarAlertas, departamentoFiltro, fechaInicio, fechaFin]);
+    return () => {
+      cancelado = true;
+    };
+  }, [navigate, puedeGestionarAlertas, departamentoFiltro, periodoFiltro]);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/api/v1/nlp/departments`)
-      .then((respuesta) => setDepartamentos(respuesta.data))
+      .then((respuesta) => {
+        setDepartamentos(respuesta.data);
+        if (respuesta.data.length > 0) {
+          setDepartamentoFiltro((actual) => actual || String(respuesta.data[0].id));
+        }
+      })
       .catch((err) => console.error('No se pudieron cargar los departamentos:', err.message));
   }, []);
 
@@ -162,7 +194,6 @@ function Dashboard() {
     };
   }, [csvImportId]);
 
-  // Funcion para el boton de salir
   const cerrarSesion = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
@@ -170,12 +201,10 @@ function Dashboard() {
   };
 
 
-  // Conector de Endpoint PATCH
   const marcarComoAtendida = async (id) => {
     try {
       const token = localStorage.getItem('token');
 
-      // Peticion de actualizacion de FastAPI
       await axios.patch(`${API_BASE_URL}/api/v1/alerts/${id}`,
         { status: 'CLOSED' },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -191,7 +220,6 @@ function Dashboard() {
     }
   };
 
-  // Manejar archivos de subida CSV
   const manejarSubidaCsv = async (e) => {
     e.preventDefault();
     if (!archivoCsv) return;
@@ -215,7 +243,6 @@ function Dashboard() {
       setCsvImportId(respuesta.data.import_id);
       setArchivoCsv(null);
 
-      // Reseteo campo de archivo en HTML
       document.getElementById('csvInput').value = '';
     } catch (err) {
       console.error("Error al subir CSV:", err.message);
@@ -239,24 +266,20 @@ function Dashboard() {
       </div>
       <p style={{ color: '#64748b' }}>Monitoreo de incidencias y riesgo de burnout.</p>
 
-      {/* Panel de sentimiento con filtros aplicados a todas las métricas */}
       <section style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
         <h3 style={{ marginTop: 0, color: '#1e293b' }}>Métricas de sentimiento</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
           <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
             Departamento
             <select value={departamentoFiltro} onChange={(e) => setDepartamentoFiltro(e.target.value)} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '5px' }}>
-              <option value="">Todos</option>
+              <option value="" disabled>Selecciona un departamento</option>
+              <option value="0">Sin departamento</option>
               {departamentos.map((departamento) => <option key={departamento.id} value={departamento.id}>{departamento.name}</option>)}
             </select>
           </label>
           <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
-            Desde
-            <input type="date" value={fechaInicio} max={fechaFin || undefined} onChange={(e) => setFechaInicio(e.target.value)} style={{ padding: '7px', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
-          </label>
-          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
-            Hasta
-            <input type="date" value={fechaFin} min={fechaInicio || undefined} onChange={(e) => setFechaFin(e.target.value)} style={{ padding: '7px', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
+            Mes calendario
+            <input type="month" value={periodoFiltro} onChange={(e) => setPeriodoFiltro(e.target.value)} style={{ padding: '7px', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
           </label>
         </div>
           {errorAnaliticas ? (
@@ -264,7 +287,7 @@ function Dashboard() {
           ) : analiticas ? (
           analiticas.status === 'insufficient_data' ? (
             <p style={{ color: '#92400e', backgroundColor: '#fef3c7', padding: '12px', borderRadius: '6px' }}>
-              Se requieren al menos 5 comentarios analizados para mostrar agregados.
+              Se requieren al menos 5 comentarios analizados en este departamento y mes para mostrar agregados.
             </p>
           ) : (
             <>
@@ -298,8 +321,8 @@ function Dashboard() {
                 <ListaMetricas titulo="Emociones frecuentes" elementos={analiticas.emotions} />
                 <ListaMetricas titulo="Ejes organizacionales" elementos={analiticas.organizational_axes} />
                 <ListaMetricas titulo="Frases clave frecuentes" elementos={analiticas.key_phrases} />
-                <ListaMetricas titulo="Polaridad por departamento" elementos={analiticas.department_averages} />
-                <ListaMetricas titulo="Tendencia diaria (días con muestra mínima)" elementos={analiticas.daily_trend} />
+                <ListaMetricas titulo="Polaridad del departamento seleccionado" elementos={analiticas.department_averages} />
+                <ListaMetricas titulo={analiticas.daily_trend_suppressed ? 'Tendencia diaria (oculta por privacidad)' : 'Tendencia diaria'} elementos={analiticas.daily_trend} />
               </div>
             </>
           )
@@ -309,7 +332,6 @@ function Dashboard() {
       </section>
 
       {puedeGestionarAlertas && <>
-      {/* Panel de Carga Masiva (CSV) */}
       <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
         <h4 style={{ marginTop: '0', color: '#334155' }}>Carga Masiva de Comentarios Históricos</h4>
         <form onSubmit={manejarSubidaCsv} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -346,7 +368,6 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Condicionales de carga y error */}
       {cargando ? (
         <p>Cargando información...</p>
       ) : error ? (
@@ -388,7 +409,6 @@ function Dashboard() {
                       </span>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                      {/* El botón solo se muestra si el estatus no es "Atendida" */}
                       {alerta.status !== 'CLOSED' && (
                         <button
                           onClick={() => marcarComoAtendida(alerta.id)}

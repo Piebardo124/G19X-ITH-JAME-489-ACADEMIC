@@ -1,7 +1,6 @@
 import re
 import spacy
 
-# Carga NLP en español de spaCy
 try:
     nlp = spacy.load("es_core_news_sm")
 except OSError as exc:
@@ -15,9 +14,7 @@ _KNOWN_NON_PERSON_ENTITIES = {
 
 
 def sanitize_text(text: str) -> str:
-    """
-    Filtra informacion de identificacion personal basica antes de persistir el texto o enviarlo a la IA
-    """
+    """Oculta patrones comunes de PII antes de guardar o analizar el comentario."""
 
     if not text:
         return ""

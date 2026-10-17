@@ -2,7 +2,6 @@ import re
 from pydantic import BaseModel, UUID4, Field, field_validator
 from typing import Optional, Literal
 
-#Entrada
 class FeedbackCreate(BaseModel):
     text_content: str = Field(..., min_length=5, max_length=3000, description="Comentario")
     is_anonymous: Literal[True] = True
@@ -19,7 +18,6 @@ class FeedbackCreate(BaseModel):
                 raise ValueError("El comentario debe tener entre 5 y 3000 caracteres.")
         return value
 
-#Salida
 class FeedbackResponse(BaseModel):
     status: str
     message: str

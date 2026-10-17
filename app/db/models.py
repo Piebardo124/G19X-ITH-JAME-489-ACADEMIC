@@ -7,17 +7,16 @@ import uuid
 from .database import Base
 
 class User(Base):
-    ## Perfiles y roles administrativos (Sincronizar con EntraID)
+    """Cuenta local usada para iniciar sesión y asignar permisos."""
     __tablename__ = "users"
 
     user_id = Column(String, primary_key=True, index=True)
     email = Column(String(100), unique=True, nullable=False)
     role = Column(String, default="analyst")
-    # La contraseña puede ser nula para cuentas autenticadas por un proveedor externo.
     hashed_password = Column(String, nullable=True)
 
 class Department(Base):
-    ##Catalogo de departamentos de la empresa.
+    """Catálogo de áreas disponibles para los comentarios."""
     __tablename__ = "departments"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -40,7 +39,7 @@ class CSVImport(Base):
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
 class FeedbackEntry(Base):
-    ##Comentarios originales inmutables
+    """Comentario recibido después de aplicar la sanitización de PII."""
     __tablename__ = "feedback_entries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -53,7 +52,7 @@ class FeedbackEntry(Base):
     analysis = relationship("SentimentAnalysis", back_populates="feedback", uselist=False)
 
 class SentimentAnalysis(Base):
-    ##Resultados del NLP
+    """Resultado de sentimiento asociado a un comentario."""
     __tablename__ = "sentiment_analysis"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -66,7 +65,7 @@ class SentimentAnalysis(Base):
     feedback = relationship("FeedbackEntry", back_populates="analysis")
 
 class KeyPhrase(Base):
-    ##Desnormalizador para facilidtar renderizado en PowerBI
+    """Frase clave extraída del análisis."""
     __tablename__ = "key_phrases"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -74,7 +73,7 @@ class KeyPhrase(Base):
     phrase = Column(String, nullable=False)
 
 class Alert(Base):
-    ##Sistema de ticket de RH para dar seguimiento a las incidencias
+    """Incidencia que Recursos Humanos debe revisar y gestionar."""
     __tablename__ = "alerts"
 
     id = Column(Integer, primary_key=True, index=True)

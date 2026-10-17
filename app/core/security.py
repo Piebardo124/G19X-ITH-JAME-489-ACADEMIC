@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-# Llave para firmar los tokens
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
 if not SECRET_KEY:
@@ -12,13 +11,12 @@ if not SECRET_KEY:
 if len(SECRET_KEY.encode("utf-8")) < 32:
     raise ValueError("JWT_SECRET_KEY debe tener al menos 32 bytes para HS256.")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 8 # Cumlimiento de arquitectura.
+ACCESS_TOKEN_EXPIRE_HOURS = 8
 
-# Esquema de autenticacion para FastAPI
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def create_access_token(data: dict):
-    """Genera un token JWT con una expiracion de 8 horas"""
+    """Crea un token de acceso con los datos del usuario y su expiración."""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     to_encode.update({"exp": expire})
@@ -26,7 +24,7 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 def verify_token(token: str = Depends(oauth2_schema)):
-    """Valida el token en cada peticion y extrae el rol del usuario"""
+    """Valida el token y devuelve la identidad y el rol incluidos en él."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudieron validar las credenciales",

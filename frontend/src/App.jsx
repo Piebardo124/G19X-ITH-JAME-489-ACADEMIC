@@ -7,14 +7,11 @@ function App () {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta publica para los empleados*/}
         <Route path="/" element={<Buzon />} />
 
-        {/* Ruta administrativas para RH*/}
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
-        {/* Ruta por defecto*/}
         <Route path="*" element={<Navigate to ="/"/>} />
       </Routes>
     </BrowserRouter>

@@ -8,7 +8,7 @@ from email.utils import parseaddr
 logger = logging.getLogger(__name__)
 
 def send_alert_email(alert_id: int, reason: str, hr_email: str | None = None):
-    """Envía un correo de alerta crítica al área de Recursos Humanos."""
+    """Envía a Recursos Humanos una notificación asociada a la alerta."""
     hr_email = (hr_email or os.getenv("SMTP_ALERT_RECIPIENT", "rh@plurione.com")).strip()
     sender_email = os.getenv("SMTP_EMAIL", "").strip()
     sender_password = os.getenv("SMTP_PASSWORD", "")
@@ -30,21 +30,20 @@ def send_alert_email(alert_id: int, reason: str, hr_email: str | None = None):
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = hr_email
-    msg['Subject'] = f"ALERTA CRÍTICA DE CLIMA LABORAL: Incidencia #{alert_id}"
+    msg['Subject'] = f"PluriOne: requiere atención la alerta #{alert_id}"
 
-    body =f"""
-    Equipo de Capital Humano,
-    
-    El Sistema de Análisis de Sentimiento ha detectado una bandera roja de atención prioritaria.
-    
-    ID de Alerta: {alert_id}
-    Motivo detectado por la IA: {reason}
-    
-    Por favor, ingresen al Dashboard para revisar y gestionar esta incidencia.
-    
-    Atentamente,
-    Motor de IA - PluriOne S.A. de C.V.
-    """
+    body = f"""Hola, equipo de Capital Humano:
+
+El sistema registró una alerta que requiere revisión.
+
+Alerta: #{alert_id}
+Motivo: {reason}
+
+Pueden consultar el detalle y actualizar su estado desde el panel de PluriOne.
+
+Saludos,
+Equipo PluriOne
+"""
     msg.attach(MIMEText(body, 'plain'))
 
     try:

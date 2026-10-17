@@ -9,7 +9,6 @@ from app.db.models import Alert, FeedbackEntry
 
 router = APIRouter()
 
-# Esquema de salida 
 class AlertResponse(BaseModel):
     id: int
     feedback_id: uuid.UUID
@@ -20,20 +19,15 @@ class AlertResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Endpoints 
 @router.get("/", response_model=List[AlertResponse])
 def list_alerts(
     status_filter: Optional[str] = None,
     risk_level: Optional[str] = None,
     department_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token) # Token valido
+    current_user: dict = Depends(verify_token)
 ):
-    """
-    Lista todas las laertas generadas por el sistema.
-    Acceso restringido a roles de Administracion y RH
-    """
-    # Validacion que el usuario tenga el rol correcto.
+    """Devuelve las alertas que puede consultar el usuario autenticado."""
     rol_usuario = current_user.get("role")
     if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
@@ -49,16 +43,12 @@ def list_alerts(
     if department_id is not None:
         query = query.join(FeedbackEntry).filter(FeedbackEntry.department_id == department_id)
 
-    # Consulta a PostgreSQL
-    # Alertas ordenadas
     alerts = query.order_by(Alert.created_at.desc()).all()
     return alerts
 
-# Esquema de actualizacion
 class AlertUpdate(BaseModel):
     status: str
 
-# Endpoint para actualizar estatus
 @router.patch("/{alert_id}", response_model=AlertResponse)
 def update_alert_status(
     alert_id: int,
@@ -66,11 +56,7 @@ def update_alert_status(
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
-    """
-    Actualiza el estatus de un ticket de alerta.
-    Solo accesible para admin y hr.
-    """
-    # Validador de rol
+    """Actualiza el estado de una alerta y registra quién hizo el cambio."""
     rol_usuario = current_user.get("role")
     if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
@@ -79,7 +65,6 @@ def update_alert_status(
         )
 
     db_alert = db.query(Alert).filter(Alert.id == alert_id).first()
-    # En caso de existir error, arrojar error 404
     if not db_alert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -98,5 +83,4 @@ def update_alert_status(
     db.commit()
     db.refresh(db_alert)
 
-    # Alerta actualizada
     return db_alert

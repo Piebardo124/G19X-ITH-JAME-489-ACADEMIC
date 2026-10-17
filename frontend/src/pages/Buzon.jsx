@@ -9,10 +9,8 @@ function Buzon() {
   const [cargando, setCargando] = useState(false);
   const [mensajeExito, setMensajeExito] = useState('');
 
-  // Lista estatica de departamentos
   const [departamentos, setDepartamentos] = useState([]);
 
-  // Cargado de departamentos al abrir pagina
   useEffect(() => {
     const fetchDepartamentos = async () => {
       try {
@@ -37,7 +35,6 @@ function Buzon() {
 
     setCargando(true);
     try {
-      // Logica de React para llamar a FastAPI en Docker
       const respuesta = await axios.post(`${API_BASE_URL}/api/v1/nlp/analyze-feedback`, {
         text_content: textoLimpio,
         is_anonymous: true,
@@ -49,7 +46,6 @@ function Buzon() {
 
       setMensajeExito(respuesta.data.message || "Tu comentario fue registrado.");
 
-      // Ocultar mensaje despues de 5 segundos
       setTimeout(() => setMensajeExito(''), 5000);
     } catch (error) {
       console.error("Error al enviar:", error.message);
@@ -73,7 +69,6 @@ function Buzon() {
 
       <form onSubmit={manejarEnvio} style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
 
-        {/* Selector de Departamento Dinámico */}
         <div>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#334155' }}>Área o Departamento (Opcional)</label>
           <select

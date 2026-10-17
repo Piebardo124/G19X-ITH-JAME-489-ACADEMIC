@@ -5,12 +5,12 @@ from app.db.database import get_db, SessionLocal
 from app.db.models import FeedbackEntry, SentimentAnalysis, Alert, KeyPhrase, CSVImport
 from app.schemas.feedback import FeedbackCreate, FeedbackResponse
 from app.services.sanitization import sanitize_text
-from app.services.ai_engine import analyze_sentiment_with_ai, generate_executive_summary
-from typing import Optional
+from app.services.ai_engine import analyze_sentiment_with_ai
 from app.core.security import verify_token
 from app.services.email_service import send_alert_email
 from app.db.models import Department
 from datetime import date, datetime, time, timedelta, timezone
+import calendar
 import uuid
 import csv
 import io
@@ -22,7 +22,7 @@ MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 
 
 def _safe_sentiment_distribution(label_counts: dict[str, int], minimum_count: int = 5):
-    """Suppress the whole distribution when a small category could be inferred."""
+    """Oculta todas las etiquetas si alguna no alcanza la muestra mínima."""
     suppressed = any(count < minimum_count for count in label_counts.values())
     return ({} if suppressed else dict(label_counts)), suppressed
 
@@ -34,7 +34,6 @@ def analyze_feedback(
 
 ):
     try:
-        # Validacion existente del departamento
         if feedback.department_id is not None:
             depto_existe = db.query(Department).filter(Department.id == feedback.department_id).first()
             if not depto_existe:
@@ -74,7 +73,6 @@ def analyze_feedback(
                 db.add(nueva_frase)
 
 
-        # Crear una alerta cuando el análisis detecta un riesgo.
         is_risk = ai_results["metadata_ai"].get("risk_burnout", False)
         nueva_alerta = None
 
@@ -232,10 +230,7 @@ async def upload_feeback_csv(
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
-    """
-    Endpoint protegido para subir archivos CSV historicos de clima laboral.
-    """
-    # Verificacion estricta de roles
+    """Valida una carga CSV autorizada y la deja en cola para procesarla."""
     rol_usuario = current_user.get("role")
     if rol_usuario not in ["admin", "hr", "analyst"]:
         raise HTTPException(
@@ -243,7 +238,6 @@ async def upload_feeback_csv(
             detail="Solo Recursos Humanos y Administradores pueden realizar cargas masivas."
         )
 
-    # Validacion del formato del archivo
     filename = file.filename or ""
     if not filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="El archivo debe ser de tipo CSV.")
@@ -306,122 +300,28 @@ def get_csv_import_status(
         "finished_at": import_job.finished_at,
     }
 
-@router.get("/summary")
-def get_executive_summary(
-    department_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
-):
-    """
-    Genera un resumen ejecutivo mediante IA de los comentarios registrados.
-    Permite filtrar por departamento
-    """
-
-    # Validacion de rol (Solo Directivos o RH)
-    rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr", "executive", "analyst"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado. Solo roles directivos o RH pueden generar resúmenes."
-        )
-
-    # Consulta los comentarios más recientes.
-    query = db.query(FeedbackEntry)
-    if department_id is not None:
-        query = query.filter(FeedbackEntry.department_id == department_id)
-
-    comentarios = query.filter(
-        FeedbackEntry.content_text.isnot(None),
-        func.length(func.trim(FeedbackEntry.content_text)) > 0,
-    ).order_by(FeedbackEntry.created_at.desc()).limit(50).all()
-
-    if not comentarios:
-        return {
-            "status": "success",
-            "executive_summary": "No hay comentarios registrados para el periodo o departamento seleccionado.",
-            "total_analyzed": 0
-        }
-
-    if len(comentarios) < 5:
-        return {
-            "status": "insufficient_data",
-            "executive_summary": "Se requieren al menos 5 comentarios para generar un resumen agregado.",
-            "total_analyzed": len(comentarios),
-        }
-
-    # Re-sanitizar protege también los registros históricos y limitar el lote
-    # mantiene acotado el costo y el tiempo de la llamada al proveedor.
-    textos_concatenados = "\n- ".join(
-        sanitize_text(c.content_text) for c in comentarios
-    )[:20000]
-
-    # Llamado a Azure OpenAI
-    resumen_ia = generate_executive_summary(textos_concatenados)
-
-    return {
-        "status": "success" if resumen_ia else "unavailable",
-        "total_analyzed": len(comentarios),
-        "executive_summary": resumen_ia or "No se pudo generar el resumen: el servicio de IA no está disponible.",
-    }
-
-@router.get("/analytics")
-def get_dashboard_analytics(
-    department_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
-):
-
-    if current_user.get("role") not in ["admin", "hr", "executive", "analyst"]:
-        raise HTTPException(status_code=403, detail="Acceso denegado.")
-
-    query = db.query(SentimentAnalysis).join(
-        FeedbackEntry, SentimentAnalysis.feedback_entry_id == FeedbackEntry.id
-    )
-
-    if department_id is not None:
-        query = query.filter(FeedbackEntry.department_id == department_id)
-
-    valid_query = query.filter(SentimentAnalysis.polarity_score.isnot(None))
-    total_responses = valid_query.count()
-    if 0 < total_responses < 5:
-        raise HTTPException(
-            status_code=403,
-            detail="Volumen insuficiente. Se requieren al menos 5 respuestas para mostrar datos agregados."
-        )
-
-    if total_responses == 0:
-        return {"total_responses": 0, "average_polarity": None, "distribution": {}}
-
-    avg_polarity = valid_query.with_entities(func.avg(SentimentAnalysis.polarity_score)).scalar()
-
-    distribucion = valid_query.with_entities(
-        SentimentAnalysis.sentiment_label,
-        func.count(SentimentAnalysis.id)
-    ).group_by(SentimentAnalysis.sentiment_label).all()
-
-    dist_dict = {label.capitalize() if label else "No_Disponible": count for label, count in distribucion}
-
-    return {
-        "total_responses": total_responses,
-        "average_polarity": round(avg_polarity, 2) if avg_polarity is not None else None,
-        "distribution": dist_dict
-    }
-
 @router.get("/stats")
 def get_dashboard_stats(
-    department_id: Optional[int] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    department_id: int,
+    start_date: date,
+    end_date: date,
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
-    """
-    Devuelve métricas agregadas para el panel, sin exponer comentarios.
-    """
+    """Devuelve métricas agregadas sin incluir texto de comentarios."""
     if current_user.get("role") not in ["admin", "hr", "executive", "analyst"]:
         raise HTTPException(status_code=403, detail="Acceso denegado.")
-    if start_date and end_date and start_date > end_date:
-        raise HTTPException(status_code=400, detail="start_date no puede ser posterior a end_date.")
+    last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+    if (
+        start_date.day != 1
+        or end_date.year != start_date.year
+        or end_date.month != start_date.month
+        or end_date.day != last_day
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="El periodo debe ser un mes calendario completo y no solapado."
+        )
 
     query = db.query(
         SentimentAnalysis,
@@ -434,16 +334,14 @@ def get_dashboard_stats(
         SentimentAnalysis.polarity_score.isnot(None)
     )
 
-    if department_id is not None:
+    if department_id == 0:
+        query = query.filter(FeedbackEntry.department_id.is_(None))
+    else:
         query = query.filter(FeedbackEntry.department_id == department_id)
-    if start_date:
-        query = query.filter(
-            FeedbackEntry.created_at >= datetime.combine(start_date, time.min, tzinfo=timezone.utc)
-        )
-    if end_date:
-        query = query.filter(
-            FeedbackEntry.created_at < datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
-        )
+    query = query.filter(
+        FeedbackEntry.created_at >= datetime.combine(start_date, time.min, tzinfo=timezone.utc),
+        FeedbackEntry.created_at < datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc),
+    )
 
     rows = query.all()
     total_responses = len(rows)
@@ -479,13 +377,18 @@ def get_dashboard_stats(
         label = analysis.sentiment_label or "Sin clasificar"
         label_counts[label] = label_counts.get(label, 0) + 1
 
-        if row_department_id is not None:
-            item = department_totals.setdefault(
-                row_department_id,
-                {"department_id": row_department_id, "department": department_name or "Sin nombre", "count": 0, "sum": 0.0},
-            )
-            item["count"] += 1
-            item["sum"] += analysis.polarity_score
+        department_key = row_department_id if row_department_id is not None else 0
+        item = department_totals.setdefault(
+            department_key,
+            {
+                "department_id": row_department_id,
+                "department": department_name or "Sin departamento",
+                "count": 0,
+                "sum": 0.0,
+            },
+        )
+        item["count"] += 1
+        item["sum"] += analysis.polarity_score
 
         day = created_at.date().isoformat() if created_at else "Sin fecha"
         day_item = daily_totals.setdefault(day, {"count": 0, "sum": 0.0})
@@ -523,20 +426,20 @@ def get_dashboard_stats(
         SentimentAnalysis.polarity_score.isnot(None),
         func.length(func.trim(KeyPhrase.phrase)) > 0,
     )
-    if department_id is not None:
+    if department_id == 0:
+        phrase_query = phrase_query.filter(FeedbackEntry.department_id.is_(None))
+    else:
         phrase_query = phrase_query.filter(FeedbackEntry.department_id == department_id)
-    if start_date:
-        phrase_query = phrase_query.filter(
-            FeedbackEntry.created_at >= datetime.combine(start_date, time.min, tzinfo=timezone.utc)
-        )
-    if end_date:
-        phrase_query = phrase_query.filter(
-            FeedbackEntry.created_at < datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
-        )
+    phrase_query = phrase_query.filter(
+        FeedbackEntry.created_at >= datetime.combine(start_date, time.min, tzinfo=timezone.utc),
+        FeedbackEntry.created_at < datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc),
+    )
     phrase_key = func.lower(func.trim(KeyPhrase.phrase))
     phrases = phrase_query.group_by(phrase_key).having(
         func.count(func.distinct(SentimentAnalysis.id)) >= 5
     ).order_by(func.count(func.distinct(SentimentAnalysis.id)).desc(), phrase_key).limit(10).all()
+
+    daily_trend_suppressed = any(item["count"] < 5 for item in daily_totals.values())
 
     return {
         "status": "success",
@@ -560,17 +463,15 @@ def get_dashboard_stats(
         "key_phrases": [
             {"name": phrase, "count": frequency} for phrase, frequency in phrases
         ],
-        "daily_trend": [
+        "daily_trend_suppressed": daily_trend_suppressed,
+        "daily_trend": [] if daily_trend_suppressed else [
             {"date": day, "total_responses": item["count"], "average_polarity": round(item["sum"] / item["count"], 2)}
             for day, item in sorted(daily_totals.items())[-30:]
-            if item["count"] >= 5
         ],
     }
 
 @router.get("/departments")
 def get_departments(db: Session = Depends(get_db)):
-    """
-    Devuelve el catalogo de departamentos para llenar el select en frontend.
-    """
+    """Devuelve las áreas disponibles para los filtros y formularios."""
     departamentos = db.query(Department).all()
     return departamentos

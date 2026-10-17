@@ -8,7 +8,6 @@ function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
-    // Gancho react para cambiar de pantallas
     const navigate = useNavigate();
 
     const manejarLogin = async (e) => {
@@ -23,7 +22,6 @@ function Login() {
 
             const respuesta = await axios.post(`${API_BASE_URL}/api/v1/auth/login`, formData);
 
-            // Guardado de Token en memoria del navegador
             localStorage.setItem('token', respuesta.data.access_token);
             localStorage.setItem('role', respuesta.data.role);
 

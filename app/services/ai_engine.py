@@ -10,7 +10,6 @@ from typing import List, Literal
 load_dotenv() 
 logger = logging.getLogger(__name__)
 
-# Define la estructura que devuelve el análisis.
 class AIAnalysisResult(BaseModel):
     polarity_score: float = Field(
         ...,
@@ -43,12 +42,8 @@ class AIAnalysisResult(BaseModel):
 
 
 def analyze_sentiment_with_ai(text: str) -> dict:
-    """
-    Procesa el texto sanitizado utilizando LangChain y modelos LLM.
-    evalua polaridad, ejes organizacionales y banderas rojas de riesgo.
-    """
+    """Analiza un comentario sanitizado y normaliza la respuesta del modelo."""
 
-    # Usa el análisis local cuando no hay una clave de API configurada.
     if not os.getenv("AZURE_OPENAI_API_KEY"):
         return _fallback_simulation(text)
 
@@ -57,7 +52,7 @@ def analyze_sentiment_with_ai(text: str) -> dict:
             base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-plurione"),
-            temperature=0.0,  # Máxima precisión
+            temperature=0.0,
             timeout=10.0,
             max_retries=0
         )
@@ -84,7 +79,6 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         score_seguro = round(result.polarity_score, 2) if result.polarity_score is not None else None
         etiqueta_estricta = enforce_polarity_thresholds(result.polarity_score)
 
-        # Sanitizacion de salidas generadas para evitar fugas de datos.
         from app.services.sanitization import sanitize_text
         frases_seguras = [sanitize_text(frase) for frase in result.key_phrases]
         motivo_seguro = sanitize_text(result.red_flag_reason) if result.red_flag_reason else ""
@@ -107,12 +101,9 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         return _fallback_simulation(text)
 
 def _fallback_simulation(text: str) -> dict:
-    """
-    Fallback Seguro: Si Azure falla, No falsificara metricas.
-    Devolucion de nulos para que el comentario quede guardado pero marcado como "No analizado por IA"
-    """
+    """Marca el comentario como pendiente cuando el servicio de IA falla."""
     return {
-        "polarity_score": None, # No inventar números
+        "polarity_score": None,
         "sentiment_label": "NO_DISPONIBLE",
         "key_phrases": [],
         "metadata_ai": {
@@ -129,7 +120,7 @@ def enforce_polarity_thresholds(score: float) -> str:
     if score is None or not math.isfinite(score) or not -1.0 <= score <= 1.0:
         return "NO_DISPONIBLE"
 
-    score_rounded = round(score, 2)  # Redondea a dos decimales para consistencia
+    score_rounded = round(score, 2)
 
     if score_rounded <= -0.25:
         return "Negativo"
@@ -139,9 +130,7 @@ def enforce_polarity_thresholds(score: float) -> str:
         return "Neutral"
 
 def generate_executive_summary(text_batch: str) -> str | None:
-    """
-    Genera un resumen ejecutivo cualitativo a partir de multiples comentarios.
-    """
+    """Resume comentarios sanitizados para una vista ejecutiva agregada."""
     if not os.getenv("AZURE_OPENAI_API_KEY"):
         return None
 
