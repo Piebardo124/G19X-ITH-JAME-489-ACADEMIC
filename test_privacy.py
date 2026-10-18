@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.api.v1.endpoints.feedback import _safe_sentiment_distribution
-from app.services.ai_engine import AIAnalysisResult, analyze_sentiment_with_ai, generate_executive_summary
+from app.services.ai_engine import AIQualitativeResult, analyze_sentiment_with_ai, generate_executive_summary
 from app.services.sanitization import sanitize_text
 
 
@@ -29,9 +29,7 @@ class _FakeStructuredLLM:
 
 
 class _FakeLLM:
-    result = AIAnalysisResult(
-        polarity_score=-0.7,
-        sentiment_label="Negativo",
+    result = AIQualitativeResult(
         emotions_detected=["Estrés/Burnout"],
         organizational_axes=["Carga de trabajo"],
         risk_burnout=True,
@@ -72,11 +70,28 @@ class PrivacyTests(unittest.TestCase):
         )
 
     def test_ai_analysis_output_is_sanitized(self):
-        with patch.dict(os.environ, {"AZURE_OPENAI_API_KEY": "test-key"}), \
+        azure_response = SimpleNamespace(
+            is_error=False,
+            sentiment="negative",
+            confidence_scores=SimpleNamespace(positive=0.05, negative=0.8),
+        )
+        with patch.dict(os.environ, {
+            "AZURE_OPENAI_API_KEY": "test-key",
+            "AZURE_OPENAI_ENDPOINT": "https://openai.example.test/",
+            "AZURE_LANGUAGE_KEY": "language-test-key",
+            "AZURE_LANGUAGE_ENDPOINT": "https://language.example.test/",
+        }), \
+             patch("app.services.ai_engine.TextAnalyticsClient") as language_client, \
              patch("app.services.ai_engine.ChatOpenAI", _FakeLLM), \
              patch("app.services.ai_engine.ChatPromptTemplate.from_messages", return_value=_FakePrompt()):
+            language_client.return_value.analyze_sentiment.return_value = [azure_response]
             result = analyze_sentiment_with_ai("Comentario de prueba")
 
+        self.assertEqual(result["polarity_score"], -0.8)
+        self.assertEqual(result["sentiment_label"], "Negativo")
+        language_client.return_value.analyze_sentiment.assert_called_once_with(
+            documents=["Comentario de prueba"]
+        )
         self.assertIn("[NOMBRE OCULTO]", result["key_phrases"])
         self.assertIn("[CORREO OCULTO]", result["key_phrases"])
         self.assertNotIn("test@empresa.com", result["metadata_ai"]["red_flag_reason"])
@@ -84,6 +99,27 @@ class PrivacyTests(unittest.TestCase):
             "[CORREO OCULTO]" in result["metadata_ai"]["red_flag_reason"]
             or "[UBICACION OCULTA]" in result["metadata_ai"]["red_flag_reason"]
         )
+
+    def test_positive_azure_sentiment_uses_confidence_scores(self):
+        azure_response = SimpleNamespace(
+            is_error=False,
+            sentiment="positive",
+            confidence_scores=SimpleNamespace(positive=0.91, negative=0.02),
+        )
+        with patch.dict(os.environ, {
+            "AZURE_OPENAI_API_KEY": "test-key",
+            "AZURE_OPENAI_ENDPOINT": "https://openai.example.test/",
+            "AZURE_LANGUAGE_KEY": "language-test-key",
+            "AZURE_LANGUAGE_ENDPOINT": "https://language.example.test/",
+        }), \
+             patch("app.services.ai_engine.TextAnalyticsClient") as language_client, \
+             patch("app.services.ai_engine.ChatOpenAI", _FakeLLM), \
+             patch("app.services.ai_engine.ChatPromptTemplate.from_messages", return_value=_FakePrompt()):
+            language_client.return_value.analyze_sentiment.return_value = [azure_response]
+            result = analyze_sentiment_with_ai("Comentario positivo")
+
+        self.assertEqual(result["polarity_score"], 0.91)
+        self.assertEqual(result["sentiment_label"], "Positivo")
 
     def test_executive_summary_output_is_sanitized(self):
         with patch.dict(os.environ, {"AZURE_OPENAI_API_KEY": "test-key"}), \
