@@ -11,6 +11,13 @@ from app.db import models
 from app.db.models import Department
 
 logger = logging.getLogger(__name__)
+DEFAULT_DEPARTMENTS = [
+    (1, "Recursos Humanos"),
+    (2, "Tecnología"),
+    (3, "Marketing"),
+    (4, "Ventas"),
+    (5, "Finanzas"),
+]
 
 def init_db():
     for intento in range(5):
@@ -26,18 +33,22 @@ def init_db():
 def seed_departments():
     db = SessionLocal()
     try:
-        existing_departments = db.query(Department).count()
-        if existing_departments == 0:
-            departments = [
-                Department(id=1, name="Recursos Humanos"),
-                Department(id=2, name="Tecnología"),
-                Department(id=3, name="Marketing"),
-                Department(id=4, name="Ventas"),
-                Department(id=5, name="Finanzas")
-            ]
-            db.add_all(departments)
-            db.commit()
-            logger.info("Se crearon los departamentos iniciales.")
+        for department_id, name in DEFAULT_DEPARTMENTS:
+            existing_by_name = db.query(Department).filter(Department.name == name).first()
+            if existing_by_name:
+                continue
+
+            existing_by_id = db.query(Department).filter(Department.id == department_id).first()
+            if existing_by_id:
+                logger.warning(
+                    "No se pudo agregar el departamento semilla %s: el ID %s ya pertenece a otro departamento.",
+                    name,
+                    department_id,
+                )
+                continue
+
+            db.add(Department(id=department_id, name=name))
+        db.flush()
         # Los IDs de la semilla son explícitos; sincronizar la secuencia evita
         # que el siguiente INSERT automático reutilice uno ya ocupado.
         db.execute(text("""
@@ -49,6 +60,7 @@ def seed_departments():
             FROM departments
         """))
         db.commit()
+        logger.info("Se verificaron los departamentos iniciales.")
     except Exception as e:
         db.rollback()
         logger.error("Error al crear departamentos (tipo=%s).", type(e).__name__)

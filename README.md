@@ -23,7 +23,7 @@ Los comentarios no se asocian a una cuenta de empleado. La sanitización es heur
 ## Requisitos
 
 - Docker Desktop con Docker Compose v2, o Docker Engine y el complemento docker compose.
-- Acceso a Azure OpenAI para análisis real. Sin AZURE_OPENAI_API_KEY, el comentario se guarda como no analizado.
+- Acceso a Azure AI Language y Azure OpenAI para análisis real. Si falta cualquiera de las cuatro variables de servicio requeridas o falla una llamada, el comentario se guarda sin análisis disponible.
 - Credenciales SMTP válidas para enviar correos de alerta.
 
 ## Configurar el entorno
@@ -49,9 +49,11 @@ Los comentarios no se asocian a una cuenta de empleado. La sanitización es heur
    | JWT_SECRET_KEY | Clave de firma JWT de al menos 32 bytes. Genera una con python -c "import secrets; print(secrets.token_urlsafe(48))". |
    | POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB | Credenciales y nombre de la base PostgreSQL. |
    | POSTGRES_USER_URLENCODED, POSTGRES_PASSWORD_URLENCODED, POSTGRES_DB_URLENCODED | Los mismos valores codificados para URL; Compose los usa para crear DATABASE_URL. Codifica caracteres especiales, por ejemplo @ como %40. |
-   | AZURE_OPENAI_ENDPOINT | Endpoint compatible con la configuración Azure OpenAI usada por el servicio. |
+   | AZURE_OPENAI_ENDPOINT | Endpoint Azure OpenAI v1, incluido el sufijo `/openai/v1/`; por ejemplo `https://<recurso>.openai.azure.com/openai/v1/`. |
    | AZURE_OPENAI_API_KEY | Llave del servicio de IA. |
-   | AZURE_OPENAI_DEPLOYMENT_NAME | Nombre del modelo o despliegue. |
+   | AZURE_OPENAI_DEPLOYMENT_NAME | Nombre exacto del despliegue disponible en el recurso. Si se omite, el código usa `gpt-4.1-mini-1`, que debe existir como deployment. |
+   | AZURE_LANGUAGE_ENDPOINT | Endpoint del recurso Azure AI Language, por ejemplo `https://<recurso>.cognitiveservices.azure.com/`. |
+   | AZURE_LANGUAGE_KEY | Llave del recurso Azure AI Language. |
    | OPENAI_API_VERSION | Está en la plantilla, pero el código actual no consume esta variable. |
    | SMTP_HOST, SMTP_PORT, SMTP_TIMEOUT_SECONDS | Servidor y parámetros SMTP. Los valores predeterminados usan Gmail con STARTTLS. |
    | SMTP_EMAIL, SMTP_PASSWORD | Cuenta remitente y contraseña aceptada por SMTP. Para Gmail usa una contraseña de aplicación. |
@@ -97,7 +99,7 @@ Detener los contenedores sin borrar el volumen de datos:
 docker compose down
 ~~~
 
-PostgreSQL conserva datos en postgres_data. Al iniciar, la aplicación ejecuta Base.metadata.create_all() y crea departamentos de muestra si la tabla está vacía. create_all() crea tablas faltantes, pero no sustituye migraciones para cambios en tablas existentes.
+PostgreSQL conserva datos en postgres_data. Al iniciar, la aplicación ejecuta Base.metadata.create_all() y completa los departamentos de muestra que falten si sus IDs están disponibles. create_all() crea tablas faltantes, pero no sustituye migraciones para cambios en tablas existentes.
 
 ## Crear el primer administrador
 

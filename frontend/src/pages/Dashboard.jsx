@@ -53,6 +53,14 @@ function Dashboard() {
   const [subiendoCsv, setSubiendoCsv] = useState(false);
   const [mensajeCsv, setMensajeCsv] = useState('');
   const [csvImportId, setCsvImportId] = useState(null);
+  const [alertRefreshKey, setAlertRefreshKey] = useState(0);
+  const [filtrosAlertas, setFiltrosAlertas] = useState({
+    status_filter: '',
+    risk_level: '',
+    department_id: '',
+    date_from: '',
+    date_to: '',
+  });
 
   const navigate = useNavigate();
 
@@ -87,7 +95,10 @@ function Dashboard() {
 
       if (puedeGestionarAlertas) {
         indiceAlertas = solicitudes.length;
-        solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/alerts`, { headers }));
+        const params = Object.fromEntries(
+          Object.entries(filtrosAlertas).filter(([, value]) => value !== '')
+        );
+        solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/alerts/`, { headers, params }));
       }
 
       if (solicitudes.length === 0) {
@@ -137,7 +148,7 @@ function Dashboard() {
     return () => {
       cancelado = true;
     };
-  }, [navigate, puedeGestionarAlertas, departamentoFiltro, periodoFiltro]);
+  }, [navigate, puedeGestionarAlertas, departamentoFiltro, periodoFiltro, filtrosAlertas, alertRefreshKey]);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/api/v1/nlp/departments`)
@@ -201,22 +212,20 @@ function Dashboard() {
   };
 
 
-  const marcarComoAtendida = async (id) => {
+  const actualizarEstadoAlerta = async (id, status) => {
     try {
       const token = localStorage.getItem('token');
 
       await axios.patch(`${API_BASE_URL}/api/v1/alerts/${id}`,
-        { status: 'CLOSED' },
+        { status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setAlertas(alertas.map(alerta =>
-        alerta.id === id ? { ...alerta, status: 'CLOSED' } : alerta
-      ));
+      setAlertRefreshKey((actual) => actual + 1);
 
     } catch (err) {
       console.error("Error al actualizar la alerta:", err.message);
-      alert("Hubo un error al intentar actualizar el estatus.");
+      setError('No se pudo actualizar el estado de la alerta. Intenta de nuevo.');
     }
   };
 
@@ -332,6 +341,47 @@ function Dashboard() {
       </section>
 
       {puedeGestionarAlertas && <>
+      <section style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
+        <h3 style={{ marginTop: 0, color: '#1e293b' }}>Bandeja de alertas</h3>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Estado
+            <select value={filtrosAlertas.status_filter} onChange={(event) => setFiltrosAlertas((actuales) => ({ ...actuales, status_filter: event.target.value }))}>
+              <option value="">Todos</option>
+              <option value="OPEN">Pendiente</option>
+              <option value="IN_PROGRESS">En revisión</option>
+              <option value="CLOSED">Atendida</option>
+              <option value="FALSE_POSITIVE">Falsa alarma</option>
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Riesgo
+            <select value={filtrosAlertas.risk_level} onChange={(event) => setFiltrosAlertas((actuales) => ({ ...actuales, risk_level: event.target.value }))}>
+              <option value="">Todos</option>
+              <option value="ALTO">Alto</option>
+              <option value="MEDIO">Medio</option>
+              <option value="BAJO">Bajo</option>
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Departamento
+            <select value={filtrosAlertas.department_id} onChange={(event) => setFiltrosAlertas((actuales) => ({ ...actuales, department_id: event.target.value }))}>
+              <option value="">Todos</option>
+              <option value="0">Sin departamento</option>
+              {departamentos.map((departamento) => <option key={departamento.id} value={departamento.id}>{departamento.name}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Desde
+            <input type="date" value={filtrosAlertas.date_from} onChange={(event) => setFiltrosAlertas((actuales) => ({ ...actuales, date_from: event.target.value }))} />
+          </label>
+          <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
+            Hasta
+            <input type="date" value={filtrosAlertas.date_to} onChange={(event) => setFiltrosAlertas((actuales) => ({ ...actuales, date_to: event.target.value }))} />
+          </label>
+        </div>
+      </section>
+
       <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
         <h4 style={{ marginTop: '0', color: '#334155' }}>Carga Masiva de Comentarios Históricos</h4>
         <form onSubmit={manejarSubidaCsv} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -409,17 +459,17 @@ function Dashboard() {
                       </span>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                      {alerta.status !== 'CLOSED' && (
-                        <button
-                          onClick={() => marcarComoAtendida(alerta.id)}
-                          style={{
-                            padding: '6px 12px', backgroundColor: '#3b82f6', color: 'white',
-                            border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '0.85em'
-                          }}
-                        >
-                          Marcar Atendida
-                        </button>
-                      )}
+                      <select
+                        aria-label={`Estado de alerta ${alerta.id}`}
+                        value={alerta.status}
+                        onChange={(event) => actualizarEstadoAlerta(alerta.id, event.target.value)}
+                        style={{ padding: '6px', border: '1px solid #cbd5e1', borderRadius: '5px' }}
+                      >
+                        <option value="OPEN">Pendiente</option>
+                        <option value="IN_PROGRESS">En revisión</option>
+                        <option value="CLOSED">Atendida</option>
+                        <option value="FALSE_POSITIVE">Falsa alarma</option>
+                      </select>
                     </td>
                   </tr>
                 ))

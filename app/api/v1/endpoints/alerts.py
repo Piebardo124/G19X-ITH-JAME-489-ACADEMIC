@@ -1,4 +1,5 @@
 import uuid
+from datetime import date, datetime, time, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -24,6 +25,8 @@ def list_alerts(
     status_filter: Optional[str] = None,
     risk_level: Optional[str] = None,
     department_id: Optional[int] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(verify_token)
 ):
@@ -41,7 +44,21 @@ def list_alerts(
     if risk_level:
         query = query.filter(Alert.risk_level == risk_level)
     if department_id is not None:
-        query = query.join(FeedbackEntry).filter(FeedbackEntry.department_id == department_id)
+        query = query.join(FeedbackEntry)
+        if department_id == 0:
+            query = query.filter(FeedbackEntry.department_id.is_(None))
+        else:
+            query = query.filter(FeedbackEntry.department_id == department_id)
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=400, detail="date_from no puede ser posterior a date_to.")
+    if date_from:
+        query = query.filter(
+            Alert.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc)
+        )
+    if date_to:
+        query = query.filter(
+            Alert.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        )
 
     alerts = query.order_by(Alert.created_at.desc()).all()
     return alerts

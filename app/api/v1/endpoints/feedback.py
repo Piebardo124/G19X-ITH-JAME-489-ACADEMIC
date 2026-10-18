@@ -19,6 +19,35 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_CSV_ERROR_DETAILS = 100
+
+
+class CSVRowValidationError(ValueError):
+    """Error de validación seguro para mostrar al usuario en el resumen CSV."""
+
+
+def _validate_csv_row(row: dict, department_ids: set[int]):
+    """Valida los campos admitidos y devuelve el texto y departamento normalizados."""
+    texto = (row.get("text_content") or "").strip()
+    if len(texto) < 5 or len(texto) > 3000:
+        return None
+
+    raw_anonymous = str(row.get("is_anonymous", "true")).strip().casefold()
+    if raw_anonymous not in {"true", "1", "yes", "si", "sí"}:
+        raise CSVRowValidationError(
+            "El MVP solo admite comentarios anónimos; is_anonymous debe ser true."
+        )
+
+    dep_id_raw = (row.get("department_id") or "").strip()
+    if dep_id_raw and not dep_id_raw.isdigit():
+        raise CSVRowValidationError("department_id debe ser un entero.")
+    dep_id = int(dep_id_raw) if dep_id_raw else None
+    if dep_id is not None and dep_id not in department_ids:
+        available = ", ".join(str(value) for value in sorted(department_ids)) or "ninguno"
+        raise CSVRowValidationError(
+            f"department_id {dep_id} no existe. IDs disponibles: {available}."
+        )
+    return texto, dep_id
 
 
 def _safe_sentiment_distribution(label_counts: dict[str, int], minimum_count: int = 5):
@@ -127,6 +156,15 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
     db = SessionLocal()
     totals = {"total_rows": 0, "processed_rows": 0, "skipped_rows": 0, "failed_rows": 0}
     errors = []
+    omitted_error_details = 0
+
+    def record_error(message: str):
+        nonlocal omitted_error_details
+        if len(errors) < MAX_CSV_ERROR_DETAILS:
+            errors.append(message)
+        else:
+            omitted_error_details += 1
+
     try:
         job = db.query(CSVImport).filter(CSVImport.id == import_id).first()
         if not job:
@@ -135,24 +173,16 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         db.commit()
 
         reader = csv.DictReader(io.StringIO(file_content))
+        department_ids = {department.id for department in db.query(Department).all()}
         for index, row in enumerate(reader, start=1):
             totals["total_rows"] += 1
             try:
-                texto = (row.get("text_content") or "").strip()
-                if len(texto) < 5 or len(texto) > 3000:
+                validated_row = _validate_csv_row(row, department_ids)
+                if validated_row is None:
                     totals["skipped_rows"] += 1
                     continue
-
-                raw_anonymous = str(row.get("is_anonymous", "true")).strip().casefold()
-                if raw_anonymous not in {"true", "1", "yes", "si", "sí"}:
-                    raise ValueError("El MVP solo admite comentarios anónimos; is_anonymous debe ser true.")
+                texto, dep_id = validated_row
                 is_anon = True
-                dep_id_raw = (row.get("department_id") or "").strip()
-                if dep_id_raw and not dep_id_raw.isdigit():
-                    raise ValueError("department_id debe ser un entero.")
-                dep_id = int(dep_id_raw) if dep_id_raw else None
-                if dep_id is not None and not db.query(Department).filter(Department.id == dep_id).first():
-                    raise ValueError("department_id no existe.")
 
                 texto_limpio = sanitize_text(texto)
                 new_feedback = FeedbackEntry(
@@ -189,27 +219,55 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                     ai_results["sentiment_label"] == "NO_DISPONIBLE"
                     or ai_results["metadata_ai"].get("is_simulation", False)
                 )
+                # El comentario ya quedó guardado. Un fallo de IA es una
+                # observación, pero no un fallo de importación del registro.
+                totals["processed_rows"] += 1
                 if analysis_unavailable:
-                    totals["failed_rows"] += 1
-                    if len(errors) < 10:
-                        errors.append(f"Fila {index}: análisis de IA no disponible")
-                else:
-                    totals["processed_rows"] += 1
+                    record_error(
+                        f"Fila {index}: comentario guardado; análisis de IA pendiente."
+                    )
                 if ai_results["metadata_ai"].get("risk_burnout", False):
-                    db.refresh(alert)
-                    send_alert_email(alert_id=alert.id, reason=alert.reason)
+                    try:
+                        send_alert_email(alert_id=alert.id, reason=alert.reason)
+                    except Exception as email_error:
+                        # La notificación no debe cambiar el resultado de una
+                        # fila ya confirmada en la base de datos.
+                        logger.warning(
+                            "No se pudo enviar correo de alerta para fila %s (tipo=%s).",
+                            index,
+                            type(email_error).__name__,
+                        )
+            except CSVRowValidationError as row_error:
+                db.rollback()
+                totals["failed_rows"] += 1
+                record_error(f"Fila {index}: {row_error}")
             except Exception as row_error:
                 db.rollback()
                 totals["failed_rows"] += 1
-                if len(errors) < 10:
-                    errors.append(f"Fila {index}: {type(row_error).__name__}")
+                logger.exception(
+                    "Error al procesar fila %s del CSV (tipo=%s).",
+                    index,
+                    type(row_error).__name__,
+                )
+                record_error(
+                    f"Fila {index}: error interno al procesar el registro ({type(row_error).__name__})."
+                )
 
         job = db.query(CSVImport).filter(CSVImport.id == import_id).first()
         if job:
             for key, value in totals.items():
                 setattr(job, key, value)
-            job.error_summary = "\n".join(errors) or None
-            job.status = "COMPLETED_WITH_WARNINGS" if totals["skipped_rows"] or totals["failed_rows"] else "COMPLETED"
+            visible_errors = list(errors)
+            if omitted_error_details:
+                visible_errors.append(
+                    f"Se omitieron {omitted_error_details} detalles adicionales."
+                )
+            job.error_summary = "\n".join(visible_errors) or None
+            job.status = (
+                "COMPLETED_WITH_WARNINGS"
+                if totals["skipped_rows"] or totals["failed_rows"] or errors
+                else "COMPLETED"
+            )
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
     except Exception as error:
