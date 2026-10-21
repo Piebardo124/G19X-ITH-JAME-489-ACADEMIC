@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.api.v1.endpoints.feedback import _safe_sentiment_distribution
-from app.services.ai_engine import AIQualitativeResult, analyze_sentiment_with_ai, generate_executive_summary
+from app.services.ai_engine import AIQualitativeResult, analyze_sentiment_with_ai
 from app.services.sanitization import sanitize_text
 
 
@@ -18,9 +18,7 @@ class _FakeChain:
         self.llm = llm
 
     def invoke(self, _payload):
-        if isinstance(self.llm, _FakeStructuredLLM):
-            return self.llm.result
-        return SimpleNamespace(content=self.llm.summary)
+        return self.llm.result
 
 
 class _FakeStructuredLLM:
@@ -36,8 +34,6 @@ class _FakeLLM:
         red_flag_reason="Julio reporta agotamiento; escribir a test@empresa.com",
         key_phrases=["Julio", "test@empresa.com", "carga excesiva"],
     )
-    summary = "Julio informó problemas; contactar test@empresa.com."
-
     def __init__(self, **_kwargs):
         pass
 
@@ -120,15 +116,6 @@ class PrivacyTests(unittest.TestCase):
 
         self.assertEqual(result["polarity_score"], 0.91)
         self.assertEqual(result["sentiment_label"], "Positivo")
-
-    def test_executive_summary_output_is_sanitized(self):
-        with patch.dict(os.environ, {"AZURE_OPENAI_API_KEY": "test-key"}), \
-             patch("app.services.ai_engine.ChatOpenAI", _FakeLLM), \
-             patch("app.services.ai_engine.ChatPromptTemplate.from_messages", return_value=_FakePrompt()):
-            summary = generate_executive_summary("Comentarios sintéticos")
-
-        self.assertNotIn("test@empresa.com", summary)
-        self.assertTrue("[CORREO OCULTO]" in summary or "[UBICACION OCULTA]" in summary)
 
     def test_small_sentiment_category_suppresses_entire_distribution(self):
         distribution, suppressed = _safe_sentiment_distribution(

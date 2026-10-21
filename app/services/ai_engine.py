@@ -133,35 +133,3 @@ def enforce_polarity_thresholds(score: float) -> str:
         return "Positivo"
     else:
         return "Neutral"
-
-def generate_executive_summary(text_batch: str) -> str | None:
-    """Resume comentarios sanitizados para una vista ejecutiva agregada."""
-    if not os.getenv("AZURE_OPENAI_API_KEY"):
-        return None
-
-    try:
-        llm = ChatOpenAI(
-            base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4.1-mini-1"),
-            temperature=0.3, 
-            max_retries=0,
-            timeout=10.0,
-        )
-
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "Eres un Consultor Ejecutivo de RRHH. Lee los comentarios "
-                       "y redacta un resumen cualitativo de un solo párrafo."),
-            ("human", "Comentarios:\n\n{comentarios}")
-        ])
-
-        chain = prompt | llm
-        result = chain.invoke({"comentarios": text_batch})
-
-        from app.services.sanitization import sanitize_text
-        return sanitize_text(result.content)
-    except Exception as e:
-        logger.error("Error generando resumen (tipo=%s).", type(e).__name__)
-        return None
-    
-            

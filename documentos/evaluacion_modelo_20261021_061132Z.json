@@ -1,0 +1,2064 @@
+{
+  "generated_at_utc": "2026-10-21T06:11:32.560983+00:00",
+  "dataset": "evaluacion_ia_200.csv",
+  "deployment_name": "gpt-4.1-mini-1",
+  "pipeline": "Azure AI Language (polaridad) + Azure OpenAI/LangChain (riesgo cualitativo)",
+  "latency_scope": "Sanitización local más el pipeline dual de IA; excluye HTTP, UI y escritura en PostgreSQL.",
+  "metrics": {
+    "sample_size": 200,
+    "analysis_available": 200,
+    "unavailable_or_failed": 0,
+    "coverage": 1.0,
+    "sentiment_accuracy": 0.87,
+    "sentiment_correct": 174,
+    "sentiment_confusion_matrix": {
+      "Positivo": {
+        "Positivo": 55,
+        "Neutral": 9,
+        "Negativo": 6,
+        "NO_DISPONIBLE": 0
+      },
+      "Neutral": {
+        "Positivo": 0,
+        "Neutral": 58,
+        "Negativo": 2,
+        "NO_DISPONIBLE": 0
+      },
+      "Negativo": {
+        "Positivo": 2,
+        "Neutral": 7,
+        "Negativo": 61,
+        "NO_DISPONIBLE": 0
+      }
+    },
+    "red_flag": {
+      "expected_positive_cases": 24,
+      "true_positives": 24,
+      "false_negatives": 0,
+      "false_positives": 3,
+      "recall": 1.0
+    },
+    "latency_seconds": {
+      "mean": 1.7403,
+      "p50": 1.6829,
+      "p95": 2.3057,
+      "min": 1.3359,
+      "max": 3.1016
+    },
+    "expected_sentiment_distribution": {
+      "Positivo": 70,
+      "Neutral": 60,
+      "Negativo": 70
+    },
+    "targets": {
+      "sentiment_accuracy_minimum": 0.85,
+      "red_flag_recall_minimum": 0.95,
+      "latency_p95_seconds_maximum": 3.0,
+      "accuracy_pass": true,
+      "recall_pass": true,
+      "latency_p95_pass": true
+    }
+  },
+  "per_case": [
+    {
+      "case_id": "E001",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 3.1016,
+      "error_type": null
+    },
+    {
+      "case_id": "E002",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7275,
+      "error_type": null
+    },
+    {
+      "case_id": "E003",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6124,
+      "error_type": null
+    },
+    {
+      "case_id": "E004",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.3057,
+      "error_type": null
+    },
+    {
+      "case_id": "E005",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.5864,
+      "error_type": null
+    },
+    {
+      "case_id": "E006",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7941,
+      "error_type": null
+    },
+    {
+      "case_id": "E007",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6321,
+      "error_type": null
+    },
+    {
+      "case_id": "E008",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7202,
+      "error_type": null
+    },
+    {
+      "case_id": "E009",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.547,
+      "error_type": null
+    },
+    {
+      "case_id": "E010",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5279,
+      "error_type": null
+    },
+    {
+      "case_id": "E011",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9755,
+      "error_type": null
+    },
+    {
+      "case_id": "E012",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6365,
+      "error_type": null
+    },
+    {
+      "case_id": "E013",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7566,
+      "error_type": null
+    },
+    {
+      "case_id": "E014",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5903,
+      "error_type": null
+    },
+    {
+      "case_id": "E015",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7088,
+      "error_type": null
+    },
+    {
+      "case_id": "E016",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5968,
+      "error_type": null
+    },
+    {
+      "case_id": "E017",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6349,
+      "error_type": null
+    },
+    {
+      "case_id": "E018",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.366,
+      "error_type": null
+    },
+    {
+      "case_id": "E019",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7004,
+      "error_type": null
+    },
+    {
+      "case_id": "E020",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5858,
+      "error_type": null
+    },
+    {
+      "case_id": "E021",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8227,
+      "error_type": null
+    },
+    {
+      "case_id": "E022",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5855,
+      "error_type": null
+    },
+    {
+      "case_id": "E023",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7293,
+      "error_type": null
+    },
+    {
+      "case_id": "E024",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.694,
+      "error_type": null
+    },
+    {
+      "case_id": "E025",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5488,
+      "error_type": null
+    },
+    {
+      "case_id": "E026",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6567,
+      "error_type": null
+    },
+    {
+      "case_id": "E027",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7251,
+      "error_type": null
+    },
+    {
+      "case_id": "E028",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.5635,
+      "error_type": null
+    },
+    {
+      "case_id": "E029",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.802,
+      "error_type": null
+    },
+    {
+      "case_id": "E030",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8589,
+      "error_type": null
+    },
+    {
+      "case_id": "E031",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5745,
+      "error_type": null
+    },
+    {
+      "case_id": "E032",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8528,
+      "error_type": null
+    },
+    {
+      "case_id": "E033",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5048,
+      "error_type": null
+    },
+    {
+      "case_id": "E034",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4195,
+      "error_type": null
+    },
+    {
+      "case_id": "E035",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5629,
+      "error_type": null
+    },
+    {
+      "case_id": "E036",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9512,
+      "error_type": null
+    },
+    {
+      "case_id": "E037",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7113,
+      "error_type": null
+    },
+    {
+      "case_id": "E038",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8281,
+      "error_type": null
+    },
+    {
+      "case_id": "E039",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7019,
+      "error_type": null
+    },
+    {
+      "case_id": "E040",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6584,
+      "error_type": null
+    },
+    {
+      "case_id": "E041",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.761,
+      "error_type": null
+    },
+    {
+      "case_id": "E042",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.1338,
+      "error_type": null
+    },
+    {
+      "case_id": "E043",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.831,
+      "error_type": null
+    },
+    {
+      "case_id": "E044",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4654,
+      "error_type": null
+    },
+    {
+      "case_id": "E045",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4496,
+      "error_type": null
+    },
+    {
+      "case_id": "E046",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4767,
+      "error_type": null
+    },
+    {
+      "case_id": "E047",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.569,
+      "error_type": null
+    },
+    {
+      "case_id": "E048",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5283,
+      "error_type": null
+    },
+    {
+      "case_id": "E049",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8607,
+      "error_type": null
+    },
+    {
+      "case_id": "E050",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.96,
+      "error_type": null
+    },
+    {
+      "case_id": "E051",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6536,
+      "error_type": null
+    },
+    {
+      "case_id": "E052",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6151,
+      "error_type": null
+    },
+    {
+      "case_id": "E053",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5781,
+      "error_type": null
+    },
+    {
+      "case_id": "E054",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6247,
+      "error_type": null
+    },
+    {
+      "case_id": "E055",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5745,
+      "error_type": null
+    },
+    {
+      "case_id": "E056",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9951,
+      "error_type": null
+    },
+    {
+      "case_id": "E057",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7559,
+      "error_type": null
+    },
+    {
+      "case_id": "E058",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8947,
+      "error_type": null
+    },
+    {
+      "case_id": "E059",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5826,
+      "error_type": null
+    },
+    {
+      "case_id": "E060",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.563,
+      "error_type": null
+    },
+    {
+      "case_id": "E061",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4756,
+      "error_type": null
+    },
+    {
+      "case_id": "E062",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5985,
+      "error_type": null
+    },
+    {
+      "case_id": "E063",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6655,
+      "error_type": null
+    },
+    {
+      "case_id": "E064",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.426,
+      "error_type": null
+    },
+    {
+      "case_id": "E065",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9152,
+      "error_type": null
+    },
+    {
+      "case_id": "E066",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6829,
+      "error_type": null
+    },
+    {
+      "case_id": "E067",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7695,
+      "error_type": null
+    },
+    {
+      "case_id": "E068",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6708,
+      "error_type": null
+    },
+    {
+      "case_id": "E069",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7414,
+      "error_type": null
+    },
+    {
+      "case_id": "E070",
+      "expected_sentiment": "Positivo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7766,
+      "error_type": null
+    },
+    {
+      "case_id": "E071",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5606,
+      "error_type": null
+    },
+    {
+      "case_id": "E072",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.0413,
+      "error_type": null
+    },
+    {
+      "case_id": "E073",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6136,
+      "error_type": null
+    },
+    {
+      "case_id": "E074",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7244,
+      "error_type": null
+    },
+    {
+      "case_id": "E075",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5889,
+      "error_type": null
+    },
+    {
+      "case_id": "E076",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.3473,
+      "error_type": null
+    },
+    {
+      "case_id": "E077",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4461,
+      "error_type": null
+    },
+    {
+      "case_id": "E078",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4093,
+      "error_type": null
+    },
+    {
+      "case_id": "E079",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4633,
+      "error_type": null
+    },
+    {
+      "case_id": "E080",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4005,
+      "error_type": null
+    },
+    {
+      "case_id": "E081",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4993,
+      "error_type": null
+    },
+    {
+      "case_id": "E082",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4285,
+      "error_type": null
+    },
+    {
+      "case_id": "E083",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7092,
+      "error_type": null
+    },
+    {
+      "case_id": "E084",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4137,
+      "error_type": null
+    },
+    {
+      "case_id": "E085",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4279,
+      "error_type": null
+    },
+    {
+      "case_id": "E086",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4838,
+      "error_type": null
+    },
+    {
+      "case_id": "E087",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.1423,
+      "error_type": null
+    },
+    {
+      "case_id": "E088",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4789,
+      "error_type": null
+    },
+    {
+      "case_id": "E089",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6049,
+      "error_type": null
+    },
+    {
+      "case_id": "E090",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9398,
+      "error_type": null
+    },
+    {
+      "case_id": "E091",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4329,
+      "error_type": null
+    },
+    {
+      "case_id": "E092",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6368,
+      "error_type": null
+    },
+    {
+      "case_id": "E093",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.623,
+      "error_type": null
+    },
+    {
+      "case_id": "E094",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.6362,
+      "error_type": null
+    },
+    {
+      "case_id": "E095",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8582,
+      "error_type": null
+    },
+    {
+      "case_id": "E096",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5489,
+      "error_type": null
+    },
+    {
+      "case_id": "E097",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6793,
+      "error_type": null
+    },
+    {
+      "case_id": "E098",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7532,
+      "error_type": null
+    },
+    {
+      "case_id": "E099",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6887,
+      "error_type": null
+    },
+    {
+      "case_id": "E100",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6579,
+      "error_type": null
+    },
+    {
+      "case_id": "E101",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7276,
+      "error_type": null
+    },
+    {
+      "case_id": "E102",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.6517,
+      "error_type": null
+    },
+    {
+      "case_id": "E103",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6819,
+      "error_type": null
+    },
+    {
+      "case_id": "E104",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4453,
+      "error_type": null
+    },
+    {
+      "case_id": "E105",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.1494,
+      "error_type": null
+    },
+    {
+      "case_id": "E106",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.3359,
+      "error_type": null
+    },
+    {
+      "case_id": "E107",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4502,
+      "error_type": null
+    },
+    {
+      "case_id": "E108",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.466,
+      "error_type": null
+    },
+    {
+      "case_id": "E109",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.799,
+      "error_type": null
+    },
+    {
+      "case_id": "E110",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8329,
+      "error_type": null
+    },
+    {
+      "case_id": "E111",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7038,
+      "error_type": null
+    },
+    {
+      "case_id": "E112",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6644,
+      "error_type": null
+    },
+    {
+      "case_id": "E113",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.713,
+      "error_type": null
+    },
+    {
+      "case_id": "E114",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5789,
+      "error_type": null
+    },
+    {
+      "case_id": "E115",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5413,
+      "error_type": null
+    },
+    {
+      "case_id": "E116",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7542,
+      "error_type": null
+    },
+    {
+      "case_id": "E117",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.5147,
+      "error_type": null
+    },
+    {
+      "case_id": "E118",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9352,
+      "error_type": null
+    },
+    {
+      "case_id": "E119",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9192,
+      "error_type": null
+    },
+    {
+      "case_id": "E120",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5007,
+      "error_type": null
+    },
+    {
+      "case_id": "E121",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6444,
+      "error_type": null
+    },
+    {
+      "case_id": "E122",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4801,
+      "error_type": null
+    },
+    {
+      "case_id": "E123",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5009,
+      "error_type": null
+    },
+    {
+      "case_id": "E124",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7157,
+      "error_type": null
+    },
+    {
+      "case_id": "E125",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8604,
+      "error_type": null
+    },
+    {
+      "case_id": "E126",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7442,
+      "error_type": null
+    },
+    {
+      "case_id": "E127",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5014,
+      "error_type": null
+    },
+    {
+      "case_id": "E128",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6435,
+      "error_type": null
+    },
+    {
+      "case_id": "E129",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.0925,
+      "error_type": null
+    },
+    {
+      "case_id": "E130",
+      "expected_sentiment": "Neutral",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5239,
+      "error_type": null
+    },
+    {
+      "case_id": "E131",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.5689,
+      "error_type": null
+    },
+    {
+      "case_id": "E132",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.5529,
+      "error_type": null
+    },
+    {
+      "case_id": "E133",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.2326,
+      "error_type": null
+    },
+    {
+      "case_id": "E134",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.6669,
+      "error_type": null
+    },
+    {
+      "case_id": "E135",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.9068,
+      "error_type": null
+    },
+    {
+      "case_id": "E136",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.7206,
+      "error_type": null
+    },
+    {
+      "case_id": "E137",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.6081,
+      "error_type": null
+    },
+    {
+      "case_id": "E138",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.848,
+      "error_type": null
+    },
+    {
+      "case_id": "E139",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.5982,
+      "error_type": null
+    },
+    {
+      "case_id": "E140",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.5467,
+      "error_type": null
+    },
+    {
+      "case_id": "E141",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.7754,
+      "error_type": null
+    },
+    {
+      "case_id": "E142",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.8887,
+      "error_type": null
+    },
+    {
+      "case_id": "E143",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.6833,
+      "error_type": null
+    },
+    {
+      "case_id": "E144",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.5153,
+      "error_type": null
+    },
+    {
+      "case_id": "E145",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.9621,
+      "error_type": null
+    },
+    {
+      "case_id": "E146",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.8212,
+      "error_type": null
+    },
+    {
+      "case_id": "E147",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.3058,
+      "error_type": null
+    },
+    {
+      "case_id": "E148",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.0132,
+      "error_type": null
+    },
+    {
+      "case_id": "E149",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.8396,
+      "error_type": null
+    },
+    {
+      "case_id": "E150",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.9163,
+      "error_type": null
+    },
+    {
+      "case_id": "E151",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4916,
+      "error_type": null
+    },
+    {
+      "case_id": "E152",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5242,
+      "error_type": null
+    },
+    {
+      "case_id": "E153",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6013,
+      "error_type": null
+    },
+    {
+      "case_id": "E154",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9072,
+      "error_type": null
+    },
+    {
+      "case_id": "E155",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.918,
+      "error_type": null
+    },
+    {
+      "case_id": "E156",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6097,
+      "error_type": null
+    },
+    {
+      "case_id": "E157",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9224,
+      "error_type": null
+    },
+    {
+      "case_id": "E158",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8689,
+      "error_type": null
+    },
+    {
+      "case_id": "E159",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.587,
+      "error_type": null
+    },
+    {
+      "case_id": "E160",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7772,
+      "error_type": null
+    },
+    {
+      "case_id": "E161",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.0216,
+      "error_type": null
+    },
+    {
+      "case_id": "E162",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5901,
+      "error_type": null
+    },
+    {
+      "case_id": "E163",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.1771,
+      "error_type": null
+    },
+    {
+      "case_id": "E164",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8412,
+      "error_type": null
+    },
+    {
+      "case_id": "E165",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9686,
+      "error_type": null
+    },
+    {
+      "case_id": "E166",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.0111,
+      "error_type": null
+    },
+    {
+      "case_id": "E167",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8098,
+      "error_type": null
+    },
+    {
+      "case_id": "E168",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4317,
+      "error_type": null
+    },
+    {
+      "case_id": "E169",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Positivo",
+      "expected_red_flag": false,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.7232,
+      "error_type": null
+    },
+    {
+      "case_id": "E170",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4701,
+      "error_type": null
+    },
+    {
+      "case_id": "E171",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8927,
+      "error_type": null
+    },
+    {
+      "case_id": "E172",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.0292,
+      "error_type": null
+    },
+    {
+      "case_id": "E173",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8709,
+      "error_type": null
+    },
+    {
+      "case_id": "E174",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5626,
+      "error_type": null
+    },
+    {
+      "case_id": "E175",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.7731,
+      "error_type": null
+    },
+    {
+      "case_id": "E176",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5397,
+      "error_type": null
+    },
+    {
+      "case_id": "E177",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7863,
+      "error_type": null
+    },
+    {
+      "case_id": "E178",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6778,
+      "error_type": null
+    },
+    {
+      "case_id": "E179",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4677,
+      "error_type": null
+    },
+    {
+      "case_id": "E180",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4374,
+      "error_type": null
+    },
+    {
+      "case_id": "E181",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5537,
+      "error_type": null
+    },
+    {
+      "case_id": "E182",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8487,
+      "error_type": null
+    },
+    {
+      "case_id": "E183",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7118,
+      "error_type": null
+    },
+    {
+      "case_id": "E184",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6635,
+      "error_type": null
+    },
+    {
+      "case_id": "E185",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6533,
+      "error_type": null
+    },
+    {
+      "case_id": "E186",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 2.3926,
+      "error_type": null
+    },
+    {
+      "case_id": "E187",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9403,
+      "error_type": null
+    },
+    {
+      "case_id": "E188",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5514,
+      "error_type": null
+    },
+    {
+      "case_id": "E189",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4379,
+      "error_type": null
+    },
+    {
+      "case_id": "E190",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.5229,
+      "error_type": null
+    },
+    {
+      "case_id": "E191",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7382,
+      "error_type": null
+    },
+    {
+      "case_id": "E192",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.4808,
+      "error_type": null
+    },
+    {
+      "case_id": "E193",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.5836,
+      "error_type": null
+    },
+    {
+      "case_id": "E194",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.0202,
+      "error_type": null
+    },
+    {
+      "case_id": "E195",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 1.6456,
+      "error_type": null
+    },
+    {
+      "case_id": "E196",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": true,
+      "predicted_red_flag": true,
+      "analysis_available": true,
+      "latency_seconds": 2.0225,
+      "error_type": null
+    },
+    {
+      "case_id": "E197",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Neutral",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.6821,
+      "error_type": null
+    },
+    {
+      "case_id": "E198",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.7439,
+      "error_type": null
+    },
+    {
+      "case_id": "E199",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.8712,
+      "error_type": null
+    },
+    {
+      "case_id": "E200",
+      "expected_sentiment": "Negativo",
+      "predicted_sentiment": "Negativo",
+      "expected_red_flag": false,
+      "predicted_red_flag": false,
+      "analysis_available": true,
+      "latency_seconds": 1.9706,
+      "error_type": null
+    }
+  ]
+}

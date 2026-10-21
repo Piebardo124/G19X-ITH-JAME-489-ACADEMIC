@@ -1,0 +1,201 @@
+case_id,text_content,expected_sentiment,expected_red_flag
+E001,"El equipo me recibió con mucha calidez y desde el primer día me sentí parte del grupo",Positivo,false
+E002,"Mi jefa reconoce el esfuerzo de todos y eso me anima a dar lo mejor",Positivo,false
+E003,"La capacitación estuvo muy clara y ahora puedo hacer mi chamba con más confianza",Positivo,false
+E004,"Me gusta que aquí podamos proponer ideas sin que nos hagan el feo",Positivo,false
+E005,"El horario flexible me cayó de maravilla para organizar mejor mi semana",Positivo,false
+E006,"La banda de mi equipo se rifa cuando hay que sacar un proyecto",Positivo,false
+E007,"Los nuevos procesos están chidos y nos ahorran varias vueltas",Positivo,false
+E008,"Qué padre que la empresa sí escuchó lo que pedimos en la encuesta",Positivo,false
+E009,"El ambiente está muy a gusto y se nota que hay respeto entre áreas",Positivo,false
+E010,"Me dieron buenas herramientas y ahora el trabajo sale más rápido",Positivo,false
+E011,"La comunicación del equipo ha mejorado un montón, vamos por buen camino",Positivo,false
+E012,"Mi líder se toma el tiempo de explicar y eso se agradece bastante",Positivo,false
+E013,"El apoyo para estudiar me viene súper bien y me motiva a crecer",Positivo,false
+E014,"La reunión de seguimiento fue útil y salí con prioridades claras",Positivo,false
+E015,"El bono por resultados se siente como un reconocimiento justo al esfuerzo",Positivo,false
+E016,"Me gusta que respeten la hora de salida y no esperen que uno se quede de más",Positivo,false
+E017,"El equipo de sistemas nos resolvió el problema en corto, muchas gracias",Positivo,false
+E018,"La nueva oficina está cómoda y tiene espacios tranquilos para concentrarse",Positivo,false
+E019,"Mi equipo comparte información y nadie se guarda los trucos",Positivo,false
+E020,"La inducción estuvo muy completa, no me dejaron a la deriva",Positivo,false
+E021,"Me siento tomado en cuenta cuando se deciden cambios que afectan mi área",Positivo,false
+E022,"El ambiente está con madre: hay confianza y también se cumplen los acuerdos",Positivo,false
+E023,"La empresa puso orden en los pendientes y ahora el jale fluye mejor",Positivo,false
+E024,"Mi compañera me echó la mano con el cierre y pudimos entregar a tiempo",Positivo,false
+E025,"Qué buena onda que nos den tiempo para aprender la herramienta nueva",Positivo,false
+E026,"La carga estuvo intensa pero nos repartimos bien el trabajo y salió todo",Positivo,false
+E027,"Me gustó que nos preguntaran antes de cambiar el proceso",Positivo,false
+E028,"El equipo de RH atendió mi duda de volada y con buena actitud",Positivo,false
+E029,"El plan de carrera está más claro y me da gusto saber qué sigue",Positivo,false
+E030,"La cultura del área se siente más colaborativa que hace unos meses",Positivo,false
+E031,"Mi gerente dio crédito al equipo completo, no solo a quien presentó",Positivo,false
+E032,"Las pausas activas me ayudan a regresar con más energía",Positivo,false
+E033,"La retroalimentación fue concreta y me dejó ideas para mejorar",Positivo,false
+E034,"Los cambios en el sistema quedaron bien y ya no batallamos tanto",Positivo,false
+E035,"El desayuno de equipo estuvo sencillo pero nos ayudó a convivir",Positivo,false
+E036,"La gente de mi área es bien pilas y siempre busca cómo resolver",Positivo,false
+E037,"Me dieron chance de proponer otra forma de hacer el reporte y funcionó",Positivo,false
+E038,"La coordinación con ventas estuvo de lujo esta semana",Positivo,false
+E039,"El equipo es buena onda y puedo pedir ayuda sin pena",Positivo,false
+E040,"El nuevo esquema de turnos quedó más parejo para todos",Positivo,false
+E041,"Nos pagaron puntualmente y eso da mucha tranquilidad",Positivo,false
+E042,"El proyecto salió bacano porque cada quien cumplió con su parte",Positivo,false
+E043,"Mi líder es muy chévere, escucha y luego sí da seguimiento",Positivo,false
+E044,"El equipo se puso las pilas y sacamos adelante la entrega sin drama",Positivo,false
+E045,"La empresa nos dio buen camello y una oportunidad real de aprender",Positivo,false
+E046,"Me gustó la reunión, parce; hablamos claro y acordamos responsables",Positivo,false
+E047,"El ambiente del equipo está una chimba, se trabaja con respeto",Positivo,false
+E048,"Qué nota que ahora compartamos los avances y no nos enteremos al final",Positivo,false
+E049,"La colaboración con mi pana de otra área hizo el trabajo más sencillo",Positivo,false
+E050,"La capacitación estuvo chévere y los ejemplos sí aplicaban al trabajo",Positivo,false
+E051,"El equipo tuvo buena onda y me ayudó a adaptarme al toque",Positivo,false
+E052,"La pega estuvo movida, pero el grupo respondió bacán y entregamos bien",Positivo,false
+E053,"Cachai que ahora tenemos prioridades más claras; se agradece el cambio",Positivo,false
+E054,"Mi jefa es tela y siempre da espacio para conversar los problemas",Positivo,false
+E055,"El nuevo horario está piola y me deja organizar mejor mis tiempos",Positivo,false
+E056,"En el laburo se nota que valoran las ideas, aunque vengan de alguien nuevo",Positivo,false
+E057,"Che, el equipo estuvo bárbaro para resolver la contingencia",Positivo,false
+E058,"La coordinación fue copada y nadie quedó cargando con todo",Positivo,false
+E059,"Qué bacán que tengamos herramientas que sí sirven para la pega",Positivo,false
+E060,"El equipo de Quito fue muy amable y nos hizo sentir bienvenidos",Positivo,false
+E061,"The team welcomed me warmly and helped me settle into the role",Positivo,false
+E062,"My manager gives clear feedback and recognizes everyone's contribution",Positivo,false
+E063,"The new schedule gives me a healthier balance between work and home",Positivo,false
+E064,"I appreciate that people can disagree respectfully in our meetings",Positivo,false
+E065,"The training was practical and made the new system much easier to use",Positivo,false
+E066,"My coworkers are supportive and quick to share useful information",Positivo,false
+E067,"We planned the workload together and finished the project on time",Positivo,false
+E068,"The company listened to our suggestions and made a helpful change",Positivo,false
+E069,"I feel comfortable asking questions when I need clarification",Positivo,false
+E070,"The recognition felt fair and motivated me to keep learning",Positivo,false
+E071,"La junta del lunes empezó a las nueve y terminó a las diez",Neutral,false
+E072,"El equipo de soporte usa una herramienta distinta para registrar solicitudes",Neutral,false
+E073,"Esta semana trabajé desde la oficina martes y jueves",Neutral,false
+E074,"El procedimiento indica que los reportes se entregan antes del viernes",Neutral,false
+E075,"La capacitación del sistema está programada para el próximo mes",Neutral,false
+E076,"El área tiene doce personas distribuidas en dos turnos",Neutral,false
+E077,"El documento de procesos está en la carpeta compartida",Neutral,false
+E078,"La reunión de seguimiento será virtual y durará treinta minutos",Neutral,false
+E079,"El cambio de horario entra en vigor el primero de noviembre",Neutral,false
+E080,"Recibí la solicitud y la enviaré al área correspondiente",Neutral,false
+E081,"El formulario pregunta por el departamento y la fecha de ingreso",Neutral,false
+E082,"La oficina de Monterrey abre a las ocho de la mañana",Neutral,false
+E083,"El reporte incluye resultados de enero a septiembre",Neutral,false
+E084,"Mi turno de esta semana es de lunes a viernes",Neutral,false
+E085,"La política de vacaciones se encuentra en el portal interno",Neutral,false
+E086,"Hoy revisamos tres pendientes y dejamos dos para la siguiente junta",Neutral,false
+E087,"El correo de confirmación llega después de enviar la solicitud",Neutral,false
+E088,"La plataforma registra la fecha y el área de cada comentario",Neutral,false
+E089,"El equipo de Guadalajara participa en el proyecto piloto",Neutral,false
+E090,"El inventario se actualiza el último día hábil del mes",Neutral,false
+E091,"El camión de personal pasa por la entrada norte a las siete",Neutral,false
+E092,"El reporte de gastos se entrega por el sistema de finanzas",Neutral,false
+E093,"La chamba de hoy consiste en revisar las órdenes pendientes",Neutral,false
+E094,"La oficina queda a dos cuadras del metro y abre de lunes a viernes",Neutral,false
+E095,"El equipo de Bogotá tiene reunión con operaciones cada miércoles",Neutral,false
+E096,"La plataforma nueva se llama Orbe y usa acceso con correo corporativo",Neutral,false
+E097,"El área de Cali trabaja con dos proveedores para este servicio",Neutral,false
+E098,"El camello de esta semana incluye actualizar el manual de usuario",Neutral,false
+E099,"La sede de Lima está en el piso cuatro del edificio",Neutral,false
+E100,"El formato de vacaciones pide fechas de inicio y regreso",Neutral,false
+E101,"La pega se distribuye en tres etapas: revisión, captura y cierre",Neutral,false
+E102,"Cachai, el nuevo instructivo tiene seis páginas y un anexo",Neutral,false
+E103,"El equipo de Santiago usa el mismo calendario que la sede central",Neutral,false
+E104,"El laburo del turno tarde comienza a las dos",Neutral,false
+E105,"Che, el informe de ventas incluye datos de las cinco sucursales",Neutral,false
+E106,"El equipo de Córdoba atiende solicitudes internas por un portal",Neutral,false
+E107,"La oficina de Quito está cerrada por mantenimiento este sábado",Neutral,false
+E108,"La empresa tiene una sede en Guayaquil y otra en Cuenca",Neutral,false
+E109,"En San José el brete se organiza por proyectos trimestrales",Neutral,false
+E110,"El personal de Tegucigalpa trabaja en dos edificios",Neutral,false
+E111,"La plataforma de San Salvador conserva los reportes por un año",Neutral,false
+E112,"El equipo de Managua revisa los indicadores cada quincena",Neutral,false
+E113,"La sede de La Paz recibe proveedores por la entrada lateral",Neutral,false
+E114,"El área de Asunción publica los horarios en el portal interno",Neutral,false
+E115,"La capacitación para el nuevo camello se divide en cuatro sesiones",Neutral,false
+E116,"La jefa envió el orden del día antes de la reunión",Neutral,false
+E117,"El pago se deposita el día quince y el último día del mes",Neutral,false
+E118,"La política contempla tres días de trabajo remoto por semana",Neutral,false
+E119,"El equipo utiliza una sala compartida para las llamadas con clientes",Neutral,false
+E120,"El periodo de prueba concluye después de noventa días",Neutral,false
+E121,"La agenda de hoy incluye avances, dudas y próximos pasos",Neutral,false
+E122,"El curso de seguridad está disponible en español y portugués",Neutral,false
+E123,"The weekly meeting is scheduled for Tuesday at ten",Neutral,false
+E124,"Our team tracks requests in a shared spreadsheet",Neutral,false
+E125,"The new office has two meeting rooms and one quiet area",Neutral,false
+E126,"The report covers the first three quarters of the year",Neutral,false
+E127,"My shift starts at seven and ends at three",Neutral,false
+E128,"The onboarding guide is available in the company portal",Neutral,false
+E129,"The project includes teams in Mexico, Chile, and Colombia",Neutral,false
+E130,"The policy lists the steps to request annual leave",Neutral,false
+E131,"La carga de chamba es tan pesada que llevo semanas sin poder descansar",Negativo,true
+E132,"Nos traen en friega todos los días y ya no puedo más con este ritmo",Negativo,true
+E133,"El acoso de mi supervisor continúa y me da miedo ir a la oficina",Negativo,true
+E134,"Me siento completamente agotado y pienso renunciar si esto sigue igual",Negativo,true
+E135,"Las jornadas dobles me dejaron sin energía y no consigo recuperarme",Negativo,true
+E136,"Mi jefe me humilla frente al equipo y la situación me está rebasando",Negativo,true
+E137,"Ya estoy al límite, no duermo por el trabajo y quiero dejar este puesto",Negativo,true
+E138,"El ambiente se volvió hostil por los insultos constantes de un compañero",Negativo,true
+E139,"La presión diaria me provoca ansiedad y siento que voy a tronar",Negativo,true
+E140,"Llevo meses trabajando horas extra sin descanso y estoy quemado",Negativo,true
+E141,"Me amenazaron con despedirme si reporto el trato discriminatorio",Negativo,true
+E142,"No aguanto más el acoso; estoy buscando otro empleo para salir de aquí",Negativo,true
+E143,"El agotamiento ya afecta mi salud y no veo que la empresa vaya a ayudar",Negativo,true
+E144,"Nos exigen metas imposibles con jornadas larguísimas, estoy por renunciar",Negativo,true
+E145,"Mi gerente se burla de mí y cada día me cuesta más presentarme a trabajar",Negativo,true
+E146,"La carga y la falta de pausas me tienen al borde del colapso",Negativo,true
+E147,"Me siento intimidada por los comentarios sexuales de mi supervisor",Negativo,true
+E148,"Después de tantos meses sin descanso ya decidí que voy a dejar la empresa",Negativo,true
+E149,"El trato discriminatorio y las amenazas me hacen sentir inseguro en el trabajo",Negativo,true
+E150,"Estoy exhausto, no puedo dormir y necesito salir de este ambiente tóxico",Negativo,true
+E151,"La chamba se atrasó porque nadie confirmó quién tenía cada pendiente",Negativo,false
+E152,"El cambio de último minuto nos hizo repetir parte del trabajo",Negativo,false
+E153,"No me gustó que cancelaran la capacitación sin avisar",Negativo,false
+E154,"El proceso sigue teniendo pasos duplicados y nos quita tiempo",Negativo,false
+E155,"La información llegó tarde y el equipo tuvo que improvisar",Negativo,false
+E156,"El pago variable no quedó explicado y varias personas tenemos dudas",Negativo,false
+E157,"Las juntas se alargan mucho y a veces no terminamos con acuerdos",Negativo,false
+E158,"No hay suficientes equipos disponibles cuando coincidimos en la oficina",Negativo,false
+E159,"El reporte pide los mismos datos en dos sistemas distintos",Negativo,false
+E160,"Me frustró que cambiaran las prioridades después de terminar el análisis",Negativo,false
+E161,"Está pesado el jale cuando faltan instrucciones y nadie sabe a quién preguntar",Negativo,false
+E162,"La atención de soporte fue lenta y tuve que insistir varias veces",Negativo,false
+E163,"No está chido que nos avisen de los cambios cuando ya entraron en vigor",Negativo,false
+E164,"El espacio para comer es pequeño y se llena rápido a la hora de descanso",Negativo,false
+E165,"Nos falta coordinación con el área que aprueba las compras",Negativo,false
+E166,"Me cayó mal que atribuyeran el error al equipo sin revisar los datos",Negativo,false
+E167,"La retroalimentación fue muy general y no sé qué debo corregir",Negativo,false
+E168,"El nuevo sistema se traba seguido y retrasa las tareas de todos",Negativo,false
+E169,"La carga aumentó pero seguimos con el mismo número de personas",Negativo,false
+E170,"No me parece justo que el reconocimiento se lo llevara una sola persona",Negativo,false
+E171,"El camello se complica porque los procedimientos no están actualizados",Negativo,false
+E172,"La comunicación entre Bogotá y Medellín se pierde en demasiados correos",Negativo,false
+E173,"Qué mal que el equipo tenga que rehacer informes por cambios de criterio",Negativo,false
+E174,"El jefe no respondió mis preguntas sobre cómo se calcula el bono",Negativo,false
+E175,"La pega se reparte de forma desigual y algunos terminan esperando",Negativo,false
+E176,"Cachai que cambiaron el turno sin preguntarnos y eso desordenó mi semana",Negativo,false
+E177,"El laburo se vuelve lento porque la aplicación falla cada tarde",Negativo,false
+E178,"Che, otra vez nos cambiaron la fecha de entrega sin consultar al equipo",Negativo,false
+E179,"El clima del área está medio tenso por la falta de comunicación",Negativo,false
+E180,"La coordinación estuvo floja y dos equipos hicieron el mismo análisis",Negativo,false
+E181,"El brete de esta semana fue confuso porque llegaron instrucciones distintas",Negativo,false
+E182,"La atención en la sede de Lima fue descortés y no resolvieron mi trámite",Negativo,false
+E183,"Me preocupa que el equipo de Quito no reciba la información a tiempo",Negativo,false
+E184,"El proceso de Tegucigalpa pide demasiadas aprobaciones para algo sencillo",Negativo,false
+E185,"La herramienta de San José se cae cuando intentamos cerrar el reporte",Negativo,false
+E186,"El reparto de tareas en Asunción no quedó claro y hubo retrasos",Negativo,false
+E187,"La jefatura escucha las sugerencias pero después no comunica qué decidió",Negativo,false
+E188,"Me molesta tener que estar disponible durante mi hora de comida",Negativo,false
+E189,"El pago llegó correcto, pero el desglose de descuentos no se entiende",Negativo,false
+E190,"La inducción fue rápida y quedaron varias dudas sobre las responsabilidades",Negativo,false
+E191,"El proyecto se atrasó porque dependemos de una respuesta que no llega",Negativo,false
+E192,"La reunión fue poco productiva y terminamos sin decidir quién hará el seguimiento",Negativo,false
+E193,"The workload keeps growing and I have no time to recover between shifts",Negativo,true
+E194,"My supervisor keeps making humiliating comments and I dread coming to work",Negativo,true
+E195,"I feel burned out, cannot sleep, and I am planning to resign soon",Negativo,true
+E196,"The constant harassment has made me feel unsafe in the workplace",Negativo,true
+E197,"The project priorities changed again after we completed the requested work",Negativo,false
+E198,"The instructions were unclear, so the team had to repeat the report",Negativo,false
+E199,"I was disappointed that the training was canceled without notice",Negativo,false
+E200,"The meeting ran long and ended without clear owners for the next steps",Negativo,false

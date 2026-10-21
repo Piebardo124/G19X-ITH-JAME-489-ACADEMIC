@@ -54,7 +54,6 @@ Los comentarios no se asocian a una cuenta de empleado. La sanitización es heur
    | AZURE_OPENAI_DEPLOYMENT_NAME | Nombre exacto del despliegue disponible en el recurso. Si se omite, el código usa `gpt-4.1-mini-1`, que debe existir como deployment. |
    | AZURE_LANGUAGE_ENDPOINT | Endpoint del recurso Azure AI Language, por ejemplo `https://<recurso>.cognitiveservices.azure.com/`. |
    | AZURE_LANGUAGE_KEY | Llave del recurso Azure AI Language. |
-   | OPENAI_API_VERSION | Está en la plantilla, pero el código actual no consume esta variable. |
    | SMTP_HOST, SMTP_PORT, SMTP_TIMEOUT_SECONDS | Servidor y parámetros SMTP. Los valores predeterminados usan Gmail con STARTTLS. |
    | SMTP_EMAIL, SMTP_PASSWORD | Cuenta remitente y contraseña aceptada por SMTP. Para Gmail usa una contraseña de aplicación. |
    | SMTP_ALERT_RECIPIENT | Destinatario de alertas; si queda vacío, el código usa rh@plurione.com. |
@@ -100,6 +99,14 @@ docker compose down
 ~~~
 
 PostgreSQL conserva datos en postgres_data. Al iniciar, la aplicación ejecuta Base.metadata.create_all() y completa los departamentos de muestra que falten si sus IDs están disponibles. create_all() crea tablas faltantes, pero no sustituye migraciones para cambios en tablas existentes.
+
+Para una instalación antigua que todavía no tenga `alerts.updated_at` y `alerts.updated_by`, ejecuta una vez la migración manual incluida:
+
+~~~sh
+docker compose exec web python -m app.migrate_db
+~~~
+
+Este script agrega únicamente esas dos columnas. Haz respaldo de la base antes de ejecutar cambios de esquema y revisa `docker compose logs web` si la operación falla. No es un sistema general de migraciones versionadas; `create_all()` tampoco modifica tablas existentes.
 
 ## Crear el primer administrador
 
@@ -172,6 +179,41 @@ Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una valida
 
 La suite de regresión de privacidad se ejecuta desde la raíz con `python -m unittest -v test_privacy`. Cubre sanitización de PII, salidas generadas por IA y supresión de distribuciones pequeñas.
 
+Para ejecutar todas las suites actuales desde la raíz del repositorio:
+
+~~~sh
+python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+~~~
+
+`npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados.
+
+### Evaluación cuantitativa del modelo
+
+El MVP fija `accuracy ≥85%` para polaridad y `recall ≥95%` para banderas rojas con un conjunto de al menos 200 comentarios etiquetados. Las etiquetas esperadas deben asignarlas y revisarlas personas; no uses predicciones de IA como etiquetas de referencia. El CSV de evaluación debe incluir:
+
+~~~csv
+case_id,text_content,expected_sentiment,expected_red_flag
+E001,"El equipo se apoya y comparte sus conocimientos",Positivo,false
+E002,"La carga de trabajo me provoca agotamiento constante",Negativo,true
+~~~
+
+Valores permitidos para `expected_sentiment`: `Positivo`, `Neutral` o `Negativo`. Para `expected_red_flag`: `true/false`, `sí/no` o `1/0`. No incluyas nombres ni datos personales. El evaluador sanitiza el texto antes de llamar a Azure; guarda por caso solo el identificador, las etiquetas y la latencia.
+
+Instala las dependencias del backend en un entorno local con Python 3.12 (la misma versión de la imagen Docker), configura `.env` con llaves reales de ambos servicios Azure y ejecuta desde la raíz:
+
+~~~powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python scripts/evaluar_modelo.py --csv documentos/evaluacion_ia_200.csv
+~~~
+
+El script exige 200 casos por defecto, pausa un segundo entre comentarios y escribe un JSON con accuracy, recall, cobertura, matriz de confusión y latencias media/p50/p95 por caso en `documentos/`. Los análisis no disponibles cuentan como incorrectos para accuracy y como falsos negativos si el caso esperado era una bandera roja. La latencia reportada incluye sanitización local y las dos etapas de IA; excluye UI, HTTP de la aplicación y escritura en PostgreSQL. Cada caso invoca Azure AI Language y Azure OpenAI, así que la ejecución consume cuota y puede generar cargos. Un p95 inferior a 3 segundos es una referencia operativa para el criterio del MVP; confirma con el maestro qué percentil evaluará.
+
+### Evidencia de Azure en QA
+
+En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la importación terminó con 25/25 comentarios procesados, 0 omitidos y 0 fallidos. Los 25 tuvieron análisis disponible: 9 positivos, 8 neutrales y 8 negativos; la polaridad media fue `+0.0452` (el panel la muestra como `+0.05`). Esto verifica el flujo integrado con la configuración Azure usada en QA. La muestra de 25 no demuestra los umbrales de accuracy/recall del MVP, y esa ejecución no midió latencia.
+
 ### Recorrido manual para la evaluación
 
 1. Comprueba que `docker compose ps` muestre PostgreSQL, API y frontend activos.
@@ -198,6 +240,10 @@ La suite de regresión de privacidad se ejecuta desde la raíz con `python -m un
 - app/services/: IA, sanitización y correo.
 - frontend/src/pages/: buzón, login y panel.
 - documentos/PRD.md y documentos/MVP.md: requisitos y alcance.
+
+## Uso de herramientas de IA
+
+El desarrollo contó con asistencia de IA generativa (Codex). El autor revisó y ejecutó las pruebas y verificaciones descritas; los resultados reportados corresponden a las ejecuciones indicadas, no a una certificación externa.
 
 ## Alcance y limitaciones
 

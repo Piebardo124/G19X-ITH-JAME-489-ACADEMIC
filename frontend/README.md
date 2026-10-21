@@ -1,16 +1,37 @@
-# React + Vite
+# Frontend de PluriOne
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interfaz React con Vite para el buzón anónimo, inicio de sesión, dashboard de métricas, alertas y carga CSV. La guía principal de configuración, backend, Azure y evaluación está en el [README de la raíz](../README.md).
 
-Currently, two official plugins are available:
+## Ejecutar con Docker Compose
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Desde la raíz del repositorio:
 
-## React Compiler
+~~~powershell
+docker compose up --build
+~~~
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Vite queda disponible en <http://localhost:5173>. La API debe responder en <http://localhost:8000>.
 
-## Expanding the ESLint configuration
+## Ejecutar solo el frontend
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Requisitos: Node.js 20 o posterior y npm.
+
+~~~powershell
+npm install
+npm run dev -- --host 0.0.0.0
+~~~
+
+Para apuntar a una API distinta de `http://localhost:8000`, crea `frontend/.env.local` con:
+
+~~~dotenv
+VITE_API_BASE_URL=http://localhost:8000
+~~~
+
+No agregues llaves de Azure, credenciales SMTP ni secretos de backend a variables `VITE_*`: Vite las expone al navegador.
+
+## Comprobaciones
+
+~~~powershell
+npm run lint
+npm run build
+~~~
