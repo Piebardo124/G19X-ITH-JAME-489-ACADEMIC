@@ -77,7 +77,7 @@ La primera ejecución construye la imagen e instala dependencias. Revisa los ser
 docker compose ps
 ~~~
 
-Los servicios `db`, `web` y `frontend` deben aparecer como activos. Si `web` no inicia, revisa `docker compose logs web` y `docker compose logs db`. Compose espera a que el contenedor de PostgreSQL arranque, pero no comprueba su estado de salud; la API hace hasta cinco intentos de conexión al iniciar.
+Los servicios `db`, `web` y `frontend` deben aparecer como activos. La API espera a que PostgreSQL pase su healthcheck antes de iniciar. Si `web` no inicia, revisa `docker compose logs web` y `docker compose logs db`.
 
 Direcciones locales:
 
@@ -111,7 +111,7 @@ docker compose exec web python -m app.create_admin_cli
 
 Escribe el correo y la contraseña cuando se soliciten. La contraseña se almacena con hash bcrypt. Entra al sistema desde http://localhost:5173/login. No hay una ruta pública para registrar administradores.
 
-El asistente CLI no valida una política mínima de contraseña ni limita la creación a un solo administrador. Ejecútalo únicamente desde un entorno controlado y usa una contraseña robusta.
+El asistente CLI solo permite crear el administrador inicial y rechaza contraseñas de menos de 12 caracteres. No expongas el acceso al contenedor a usuarios no confiables.
 
 ## Buzón y carga CSV
 

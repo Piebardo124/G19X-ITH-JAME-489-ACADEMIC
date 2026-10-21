@@ -44,7 +44,9 @@ Pueden consultar el detalle y actualizar su estado desde el panel de PluriOne.
 Saludos,
 Equipo PluriOne
 """
-    msg.attach(MIMEText(body, 'plain'))
+    # MIMEText usa ASCII por defecto; motivos de alerta en español pueden
+    # incluir acentos y provocar UnicodeEncodeError al enviar por SMTP.
+    msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
