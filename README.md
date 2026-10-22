@@ -189,6 +189,16 @@ python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_aler
 
 ### Evaluación cuantitativa del modelo
 
+#### Procedencia y revisión de las etiquetas
+
+Los 200 comentarios del conjunto `documentos/evaluacion_ia_200.csv` fueron generados con asistencia de Codex. Julio Alfonso Monteverde Esquer realizó una primera revisión de los 200 comentarios y sus etiquetas el 21 de octubre de 2026. En esa revisión no se modificó el archivo. Se aplicaron estos criterios para la polaridad:
+
+- **Positivo:** comentarios no agresivos que expresan aspectos favorables de la empresa o describen un buen clima laboral.
+- **Neutral:** comentarios que no son claramente positivos ni agresivos, incluidos comentarios regulares que señalan algunos problemas.
+- **Negativo:** comentarios que expresan insultos, problemas, quejas o abusos.
+
+La revisión documenta la procedencia y el criterio aplicado; no equivale a una validación independiente por una segunda persona.
+
 El MVP fija `accuracy ≥85%` para polaridad y `recall ≥95%` para banderas rojas con un conjunto de al menos 200 comentarios etiquetados. Las etiquetas esperadas deben asignarlas y revisarlas personas; no uses predicciones de IA como etiquetas de referencia. El CSV de evaluación debe incluir:
 
 ~~~csv
@@ -209,6 +219,10 @@ python scripts/evaluar_modelo.py --csv documentos/evaluacion_ia_200.csv
 ~~~
 
 El script exige 200 casos por defecto, pausa un segundo entre comentarios y escribe un JSON con accuracy, recall, cobertura, matriz de confusión y latencias media/p50/p95 por caso en `documentos/`. Los análisis no disponibles cuentan como incorrectos para accuracy y como falsos negativos si el caso esperado era una bandera roja. La latencia reportada incluye sanitización local y las dos etapas de IA; excluye UI, HTTP de la aplicación y escritura en PostgreSQL. Cada caso invoca Azure AI Language y Azure OpenAI, así que la ejecución consume cuota y puede generar cargos. Un p95 inferior a 3 segundos es una referencia operativa para el criterio del MVP; confirma con el maestro qué percentil evaluará.
+
+#### Corrida oficial
+
+La corrida oficial es `documentos/evaluacion_modelo_20261022_025516Z.json`, generada el 22 de octubre de 2026 a las 02:55 UTC. Sobre 200 comentarios obtuvo accuracy de 86.5% (173/200), recall de banderas rojas de 100% (24/24), latencia p95 de 1.9938 segundos y cobertura de 99.5% (199/200). Cumplió los tres umbrales configurados: accuracy ≥85%, recall ≥95% y p95 <3 segundos. Un análisis no estuvo disponible y se contó como error; la latencia máxima fue 12.2637 segundos, aunque el p95 quedó bajo el objetivo. Las llamadas a IA pueden producir resultados distintos entre corridas.
 
 ### Evidencia de Azure en QA
 
