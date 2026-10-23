@@ -48,3 +48,16 @@ def verify_token(token: str = Depends(oauth2_schema)):
     except jwt.InvalidTokenError:
         raise credentials_exception
 
+def require_roles(*allowed_roles: str):
+    if not allowed_roles:
+        raise ValueError("Se debe especificar al menos un rol permitido.")
+
+    def role_checker(current_user: dict = Depends(verify_token)):
+        if current_user.get("role") not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Acceso denegado. Se requiere uno de los siguientes roles: {', '.join(allowed_roles)}"
+            )
+        return current_user
+    return role_checker
+

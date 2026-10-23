@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from app.db.database import get_db
-from app.core.security import verify_token
+from app.core.security import require_roles
 from app.db.models import Alert, FeedbackEntry
 
 router = APIRouter()
@@ -28,15 +28,9 @@ def list_alerts(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
 ):
     """Devuelve las alertas que puede consultar el usuario autenticado."""
-    rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr", "analyst"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado. Solo Recursos Humanos y Administradores pueden ver la bandeja"
-        )
     query = db.query(Alert)
 
     if status_filter:
@@ -71,15 +65,9 @@ def update_alert_status(
     alert_id: int,
     alert_update: AlertUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
 ):
     """Actualiza el estado de una alerta y registra quién hizo el cambio."""
-    rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr", "analyst"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso denegado. Solo Recursos Humanos y Administradores pueden gestionar tickets."
-        )
 
     db_alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not db_alert:

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from fastapi import HTTPException
 
 from app.api.v1.endpoints import feedback
+from app.core.security import require_roles
 
 
 class _Query:
@@ -92,14 +93,18 @@ class DashboardStatsAPITests(unittest.TestCase):
 
     def test_stats_rejects_unprivileged_role(self):
         with self.assertRaises(HTTPException) as error:
-            feedback.get_dashboard_stats(
-                department_id=1,
-                start_date=date(2026, 10, 1),
-                end_date=date(2026, 10, 31),
-                db=_ForbiddenDB(),
-                current_user={"role": "employee"},
+            require_roles("admin", "hr", "executive", "analyst")(
+                current_user={"role": "employee"}
             )
         self.assertEqual(error.exception.status_code, 403)
+
+    def test_executive_is_allowed_to_read_dashboard_stats(self):
+        self.assertEqual(
+            require_roles("admin", "hr", "executive", "analyst")(
+                current_user={"role": "executive"}
+            ),
+            {"role": "executive"},
+        )
 
 
 if __name__ == "__main__":

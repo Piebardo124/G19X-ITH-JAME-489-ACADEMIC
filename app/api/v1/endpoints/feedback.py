@@ -6,7 +6,7 @@ from app.db.models import FeedbackEntry, SentimentAnalysis, Alert, KeyPhrase, CS
 from app.schemas.feedback import FeedbackCreate, FeedbackResponse
 from app.services.sanitization import sanitize_text
 from app.services.ai_engine import analyze_sentiment_with_ai
-from app.core.security import verify_token
+from app.core.security import require_roles
 from app.services.email_service import send_alert_email
 from app.db.models import Department
 from datetime import date, datetime, time, timedelta, timezone
@@ -21,10 +21,8 @@ logger = logging.getLogger(__name__)
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 MAX_CSV_ERROR_DETAILS = 100
 
-
 class CSVRowValidationError(ValueError):
     """Error de validación seguro para mostrar al usuario en el resumen CSV."""
-
 
 def _validate_csv_row(row: dict, department_ids: set[int]):
     """Valida los campos admitidos y devuelve el texto y departamento normalizados."""
@@ -286,16 +284,9 @@ async def upload_feeback_csv(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
 ):
     """Valida una carga CSV autorizada y la deja en cola para procesarla."""
-    rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr", "analyst"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo Recursos Humanos y Administradores pueden realizar cargas masivas."
-        )
-
     filename = file.filename or ""
     if not filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="El archivo debe ser de tipo CSV.")
@@ -332,14 +323,8 @@ async def upload_feeback_csv(
 def get_csv_import_status(
     import_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
 ):
-    rol_usuario = current_user.get("role")
-    if rol_usuario not in ["admin", "hr", "analyst"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo Recursos Humanos y Administradores pueden consultar cargas masivas."
-        )
 
     import_job = db.query(CSVImport).filter(CSVImport.id == import_id).first()
     if not import_job:
@@ -364,11 +349,9 @@ def get_dashboard_stats(
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(require_roles("admin", "hr", "executive", "analyst"))
 ):
     """Devuelve métricas agregadas sin incluir texto de comentarios."""
-    if current_user.get("role") not in ["admin", "hr", "executive", "analyst"]:
-        raise HTTPException(status_code=403, detail="Acceso denegado.")
     last_day = calendar.monthrange(start_date.year, start_date.month)[1]
     if (
         start_date.day != 1

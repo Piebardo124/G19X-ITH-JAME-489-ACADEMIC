@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import CargaCsv from '../components/CargaCsv';
 import MetricasSentimiento from '../components/MetricasSentimiento';
-import BandejaAlertas from '../components/BandejasAlertas';
+import BandejaAlertas from '../components/BandejaAlertas';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 

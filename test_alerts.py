@@ -4,6 +4,7 @@ from datetime import date
 from fastapi import HTTPException
 
 from app.api.v1.endpoints.alerts import list_alerts
+from app.core.security import require_roles
 
 
 class FakeQuery:
@@ -63,13 +64,15 @@ class AlertEndpointTests(unittest.TestCase):
 
         self.assertEqual(error.exception.status_code, 400)
 
-    def test_executive_cannot_read_alert_inbox(self):
-        class NoQueryDB:
-            def query(self, *_entities):
-                raise AssertionError("No debe consultar la DB para un rol denegado")
+    def test_admin_can_read_alert_inbox(self):
+        self.assertEqual(
+            require_roles("admin", "hr", "analyst")(current_user={"role": "admin"}),
+            {"role": "admin"},
+        )
 
+    def test_executive_cannot_read_alert_inbox(self):
         with self.assertRaises(HTTPException) as error:
-            list_alerts(db=NoQueryDB(), current_user={"role": "executive"})
+            require_roles("admin", "hr", "analyst")(current_user={"role": "executive"})
 
         self.assertEqual(error.exception.status_code, 403)
 
