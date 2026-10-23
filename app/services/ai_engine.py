@@ -34,7 +34,7 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         os.getenv("AZURE_LANGUAGE_KEY"),
         os.getenv("AZURE_LANGUAGE_ENDPOINT"),
     )):
-        return _fallback_simulation(text)
+        return _fallback_simulation(text, error_type="AzureConfigurationMissing")
 
     texto_seguro = text.replace("###", "")
 
@@ -104,9 +104,9 @@ def analyze_sentiment_with_ai(text: str) -> dict:
 
     except Exception as e:
         logger.error("Error en pipeline IA dual (tipo=%s).", type(e).__name__)
-        return _fallback_simulation(text)
+        return _fallback_simulation(text, error_type=type(e).__name__)
 
-def _fallback_simulation(text: str) -> dict:
+def _fallback_simulation(text: str, error_type: str = "AnalysisUnavailable") -> dict:
     """Marca el comentario como pendiente cuando el servicio de IA falla."""
     return {
         "polarity_score": None,
@@ -118,7 +118,8 @@ def _fallback_simulation(text: str) -> dict:
             "risk_burnout": False,
             "red_flag_reason": "",
             "is_simulation": True,
-            "error_detail": "Motor de IA inaccesible. Análisis pospuesto."
+            "error_detail": "Motor de IA inaccesible. Análisis pospuesto.",
+            "error_type": error_type,
         }
     }
 

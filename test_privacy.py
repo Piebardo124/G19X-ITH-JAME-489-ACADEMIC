@@ -42,6 +42,18 @@ class _FakeLLM:
 
 
 class PrivacyTests(unittest.TestCase):
+    def test_ai_fallback_preserves_safe_failure_type(self):
+        with patch.dict(os.environ, {
+            "AZURE_OPENAI_API_KEY": "",
+            "AZURE_OPENAI_ENDPOINT": "",
+            "AZURE_LANGUAGE_KEY": "",
+            "AZURE_LANGUAGE_ENDPOINT": "",
+        }):
+            result = analyze_sentiment_with_ai("Comentario de prueba")
+
+        self.assertEqual(result["sentiment_label"], "NO_DISPONIBLE")
+        self.assertEqual(result["metadata_ai"]["error_type"], "AzureConfigurationMissing")
+
     def test_pii_sanitization_and_context_preservation(self):
         original = (
             "Me contactaron al +52 55 1234 5678 y al (662) 123-4567. "

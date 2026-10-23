@@ -12,6 +12,8 @@ PluriOne es una aplicación web para recopilar comentarios sobre el entorno labo
 - Panel React con volumen, distribución y promedio de polaridad, emociones, ejes, frases frecuentes, promedios por departamento y tendencia diaria.
 - Gestión de alertas y carga de CSV.
 
+La generación actual de alertas crea únicamente alertas de nivel `ALTO`; por ello, el filtro de la bandeja ofrece ese nivel y no muestra opciones `MEDIO` o `BAJO` que el backend todavía no genera.
+
 ## Flujo
 
 ~~~text

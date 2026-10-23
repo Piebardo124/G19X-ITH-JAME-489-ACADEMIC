@@ -98,6 +98,7 @@ def evaluate(cases: list[dict[str, Any]], delay_seconds: float) -> dict[str, Any
         predicted_sentiment = None
         predicted_red_flag = False
         error_type = None
+        unavailable_reason = None
 
         try:
             safe_text = sanitize_text(case["text_content"])
@@ -107,8 +108,15 @@ def evaluate(cases: list[dict[str, Any]], delay_seconds: float) -> dict[str, Any
                 predicted_sentiment = sentiment
             metadata = result.get("metadata_ai") or {}
             predicted_red_flag = bool(metadata.get("risk_burnout", False))
+            if predicted_sentiment is None:
+                unavailable_reason = (
+                    metadata.get("error_type")
+                    or metadata.get("error_detail")
+                    or "analysis_unavailable_without_reason"
+                )
         except Exception as exc:  # continúa para medir cobertura y fallos del lote
             error_type = type(exc).__name__
+            unavailable_reason = error_type
 
         elapsed_seconds = time.perf_counter() - started
         latencies.append(elapsed_seconds)
@@ -121,6 +129,7 @@ def evaluate(cases: list[dict[str, Any]], delay_seconds: float) -> dict[str, Any
             "analysis_available": predicted_sentiment is not None,
             "latency_seconds": round(elapsed_seconds, 4),
             "error_type": error_type,
+            "unavailable_reason": unavailable_reason,
         })
 
         if index % 10 == 0 or index == len(cases):

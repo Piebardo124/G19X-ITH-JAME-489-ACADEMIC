@@ -229,8 +229,6 @@ function Dashboard() {
       setMensajeCsv(respuesta.data.message);
       setCsvImportId(respuesta.data.import_id);
       setArchivoCsv(null);
-
-      document.getElementById('csvInput').value = '';
     } catch (err) {
       console.error("Error al subir CSV:", err.message);
       const errorDetail = err.response?.data?.detail || "Error desconocido al procesar el archivo.";

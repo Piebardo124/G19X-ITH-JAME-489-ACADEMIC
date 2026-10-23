@@ -1,10 +1,20 @@
+import { useEffect, useRef } from 'react';
+
 export default function CargaCsv({ manejarSubidaCsv, archivoCsv, setArchivoCsv, subiendoCsv, mensajeCsv }) {
+    const inputArchivoRef = useRef(null);
+
+    useEffect(() => {
+        if (!archivoCsv && inputArchivoRef.current) {
+            inputArchivoRef.current.value = '';
+        }
+    }, [archivoCsv]);
+
     return (
         <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
             <h4 style={{ marginTop: '0', color: '#334155' }}>Carga Masiva de Comentarios Históricos</h4>
             <form onSubmit={manejarSubidaCsv} style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
-                    id="csvInput"
+                    ref={inputArchivoRef}
                     type="file"
                     accept=".csv"
                     onChange={(e) => setArchivoCsv(e.target.files[0])}

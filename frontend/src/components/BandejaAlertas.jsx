@@ -1,3 +1,10 @@
+const ESTADOS_ALERTA = {
+    OPEN: { label: 'Pendiente', background: '#fee2e2', color: '#b91c1c' },
+    IN_PROGRESS: { label: 'En revisión', background: '#fef3c7', color: '#92400e' },
+    CLOSED: { label: 'Atendida', background: '#d1fae5', color: '#059669' },
+    FALSE_POSITIVE: { label: 'Falsa alarma', background: '#e0e7ff', color: '#3730a3' },
+};
+
 export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAlertas, actualizarEstadoAlerta, departamentos, cargando, error }) {
     return (
         <>
@@ -19,8 +26,6 @@ export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAler
                 <select value={filtrosAlertas.risk_level} onChange={(event) => setFiltrosAlertas((actuales) => ({ ...actuales, risk_level: event.target.value }))} style={{ padding: '6px', border: '1px solid #cbd5e1', borderRadius: '5px' }}>
                 <option value="">Todos</option>
                 <option value="ALTO">Alto</option>
-                <option value="MEDIO">Medio</option>
-                <option value="BAJO">Bajo</option>
                 </select>
             </label>
             <label style={{ display: 'grid', gap: '4px', color: '#334155', fontSize: '14px' }}>
@@ -76,10 +81,10 @@ export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAler
                         <td style={{ padding: '12px' }}>
                         <span style={{
                             padding: '4px 8px', borderRadius: '12px', fontSize: '0.85em', fontWeight: 'bold',
-                            backgroundColor: alerta.status === 'CLOSED' ? '#d1fae5' : '#fee2e2',
-                            color: alerta.status === 'CLOSED' ? '#059669' : '#b91c1c'
+                            backgroundColor: (ESTADOS_ALERTA[alerta.status] || ESTADOS_ALERTA.OPEN).background,
+                            color: (ESTADOS_ALERTA[alerta.status] || ESTADOS_ALERTA.OPEN).color
                         }}>
-                            {alerta.status}
+                            {(ESTADOS_ALERTA[alerta.status] || ESTADOS_ALERTA.OPEN).label}
                         </span>
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
