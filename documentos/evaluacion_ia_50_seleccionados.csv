@@ -1,0 +1,51 @@
+﻿case_id,text_content,expected_sentiment,expected_red_flag
+E004,Me gusta que aquí podamos proponer ideas sin que nos hagan el feo,Positivo,false
+E005,El horario flexible me cayó de maravilla para organizar mejor mi semana,Positivo,false
+E010,Me dieron buenas herramientas y ahora el trabajo sale más rápido,Positivo,false
+E011,"La comunicación del equipo ha mejorado un montón, vamos por buen camino",Positivo,false
+E012,Mi líder se toma el tiempo de explicar y eso se agradece bastante,Positivo,false
+E019,Mi equipo comparte información y nadie se guarda los trucos,Positivo,false
+E023,La empresa puso orden en los pendientes y ahora el jale fluye mejor,Positivo,false
+E027,Me gustó que nos preguntaran antes de cambiar el proceso,Positivo,false
+E029,El plan de carrera está más claro y me da gusto saber qué sigue,Positivo,false
+E033,La retroalimentación fue concreta y me dejó ideas para mejorar,Positivo,false
+E038,La coordinación con ventas estuvo de lujo esta semana,Positivo,false
+E041,Nos pagaron puntualmente y eso da mucha tranquilidad,Positivo,false
+E045,La empresa nos dio buen camello y una oportunidad real de aprender,Positivo,false
+E048,Qué nota que ahora compartamos los avances y no nos enteremos al final,Positivo,false
+E054,Mi jefa es tela y siempre da espacio para conversar los problemas,Positivo,false
+E059,Qué bacán que tengamos herramientas que sí sirven para la pega,Positivo,false
+E063,The new schedule gives me a healthier balance between work and home,Positivo,false
+E068,The company listened to our suggestions and made a helpful change,Positivo,false
+E071,La junta del lunes empezó a las nueve y terminó a las diez,Neutral,false
+E076,El área tiene doce personas distribuidas en dos turnos,Neutral,false
+E082,La oficina de Monterrey abre a las ocho de la mañana,Neutral,false
+E085,La política de vacaciones se encuentra en el portal interno,Neutral,false
+E087,El correo de confirmación llega después de enviar la solicitud,Neutral,false
+E088,La plataforma registra la fecha y el área de cada comentario,Neutral,false
+E091,El camión de personal pasa por la entrada norte a las siete,Neutral,false
+E095,El equipo de Bogotá tiene reunión con operaciones cada miércoles,Neutral,false
+E099,La sede de Lima está en el piso cuatro del edificio,Neutral,false
+E102,"Cachai, el nuevo instructivo tiene seis páginas y un anexo",Neutral,false
+E108,La empresa tiene una sede en Guayaquil y otra en Cuenca,Neutral,false
+E113,La sede de La Paz recibe proveedores por la entrada lateral,Neutral,false
+E119,El equipo utiliza una sala compartida para las llamadas con clientes,Neutral,false
+E124,Our team tracks requests in a shared spreadsheet,Neutral,false
+E128,The onboarding guide is available in the company portal,Neutral,false
+E134,Me siento completamente agotado y pienso renunciar si esto sigue igual,Negativo,true
+E137,"Ya estoy al límite, no duermo por el trabajo y quiero dejar este puesto",Negativo,true
+E142,No aguanto más el acoso; estoy buscando otro empleo para salir de aquí,Negativo,true
+E144,"Nos exigen metas imposibles con jornadas larguísimas, estoy por renunciar",Negativo,true
+E147,Me siento intimidada por los comentarios sexuales de mi supervisor,Negativo,true
+E150,"Estoy exhausto, no puedo dormir y necesito salir de este ambiente tóxico",Negativo,true
+E156,El pago variable no quedó explicado y varias personas tenemos dudas,Negativo,false
+E161,Está pesado el jale cuando faltan instrucciones y nadie sabe a quién preguntar,Negativo,false
+E167,La retroalimentación fue muy general y no sé qué debo corregir,Negativo,false
+E170,No me parece justo que el reconocimiento se lo llevara una sola persona,Negativo,false
+E175,La pega se reparte de forma desigual y algunos terminan esperando,Negativo,false
+E178,"Che, otra vez nos cambiaron la fecha de entrega sin consultar al equipo",Negativo,false
+E182,La atención en la sede de Lima fue descortés y no resolvieron mi trámite,Negativo,false
+E189,"El pago llegó correcto, pero el desglose de descuentos no se entiende",Negativo,false
+E195,"I feel burned out, cannot sleep, and I am planning to resign soon",Negativo,true
+E198,"The instructions were unclear, so the team had to repeat the report",Negativo,false
+E200,The meeting ran long and ended without clear owners for the next steps,Negativo,false

@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -22,11 +22,14 @@ class AlertResponse(BaseModel):
 
 @router.get("/", response_model=List[AlertResponse])
 def list_alerts(
+    response: Response,
     status_filter: Optional[str] = None,
     risk_level: Optional[str] = None,
     department_id: Optional[int] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
 ):
@@ -54,8 +57,15 @@ def list_alerts(
             Alert.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc)
         )
 
-    alerts = query.order_by(Alert.created_at.desc()).all()
-    return alerts
+    alerts = (
+        query.order_by(Alert.created_at.desc(), Alert.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size + 1)
+        .all()
+    )
+    has_more = len(alerts) > page_size
+    response.headers["X-Has-More"] = str(has_more).lower()
+    return alerts[:page_size]
 
 class AlertUpdate(BaseModel):
     status: str

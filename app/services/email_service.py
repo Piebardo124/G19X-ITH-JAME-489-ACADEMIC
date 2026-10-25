@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 def send_alert_email(alert_id: int, reason: str, hr_email: str | None = None):
     """Envía a Recursos Humanos una notificación asociada a la alerta."""
-    hr_email = (hr_email or os.getenv("SMTP_ALERT_RECIPIENT", "rh@plurione.com")).strip()
+    hr_email = (hr_email or os.getenv("SMTP_ALERT_RECIPIENT", "")).strip()
     sender_email = os.getenv("SMTP_EMAIL", "").strip()
     sender_password = os.getenv("SMTP_PASSWORD", "")
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -22,6 +22,9 @@ def send_alert_email(alert_id: int, reason: str, hr_email: str | None = None):
 
     if not sender_email or not sender_password:
         logger.warning("No se envió la alerta %s: faltan las credenciales SMTP.", alert_id)
+        return False
+    if not hr_email:
+        logger.error("No se envió la alerta %s: falta SMTP_ALERT_RECIPIENT.", alert_id)
         return False
     if parseaddr(sender_email)[1] != sender_email or parseaddr(hr_email)[1] != hr_email:
         logger.error("No se envió la alerta %s: dirección de correo inválida.", alert_id)

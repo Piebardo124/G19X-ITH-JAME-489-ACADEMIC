@@ -5,7 +5,7 @@ const ESTADOS_ALERTA = {
     FALSE_POSITIVE: { label: 'Falsa alarma', background: '#e0e7ff', color: '#3730a3' },
 };
 
-export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAlertas, actualizarEstadoAlerta, departamentos, cargando, error }) {
+export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAlertas, actualizarEstadoAlerta, departamentos, cargando, error, pagina, hayMas, cambiarPagina }) {
     return (
         <>
         <section style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '8px', marginBottom: '25px' }}>
@@ -105,6 +105,15 @@ export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAler
                 )}
                 </tbody>
             </table>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', padding: '12px' }}>
+                <button type="button" disabled={pagina <= 1 || cargando} onClick={() => cambiarPagina((actual) => actual - 1)}>
+                    Anterior
+                </button>
+                <span>Página {pagina}</span>
+                <button type="button" disabled={!hayMas || cargando} onClick={() => cambiarPagina((actual) => actual + 1)}>
+                    Siguiente
+                </button>
+            </div>
             </div>
         )}
         </>

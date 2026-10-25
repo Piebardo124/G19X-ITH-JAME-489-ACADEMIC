@@ -32,6 +32,8 @@ function Dashboard() {
   const [mensajeCsv, setMensajeCsv] = useState('');
   const [csvImportId, setCsvImportId] = useState(null);
   const [alertRefreshKey, setAlertRefreshKey] = useState(0);
+  const [paginaAlertas, setPaginaAlertas] = useState(1);
+  const [hayMasAlertas, setHayMasAlertas] = useState(false);
   const [filtrosAlertas, setFiltrosAlertas] = useState({
     status_filter: '',
     risk_level: '',
@@ -76,6 +78,8 @@ function Dashboard() {
         const params = Object.fromEntries(
           Object.entries(filtrosAlertas).filter(([, value]) => value !== '')
         );
+        params.page = paginaAlertas;
+        params.page_size = 50;
         solicitudes.push(axios.get(`${API_BASE_URL}/api/v1/alerts/`, { headers, params }));
       }
 
@@ -107,9 +111,11 @@ function Dashboard() {
           const resultadoAlertas = resultados[indiceAlertas];
           if (resultadoAlertas.status === 'fulfilled') {
             setAlertas(resultadoAlertas.value.data);
+            setHayMasAlertas(resultadoAlertas.value.headers['x-has-more'] === 'true');
           } else {
             const err = resultadoAlertas.reason;
             setError('No se pudieron cargar las alertas.');
+            setHayMasAlertas(false);
             if (err.response?.status === 401) {
               localStorage.removeItem('token');
               localStorage.removeItem('role');
@@ -126,7 +132,12 @@ function Dashboard() {
     return () => {
       cancelado = true;
     };
-  }, [navigate, puedeGestionarAlertas, departamentoFiltro, periodoFiltro, filtrosAlertas, alertRefreshKey]);
+  }, [navigate, puedeGestionarAlertas, departamentoFiltro, periodoFiltro, filtrosAlertas, alertRefreshKey, paginaAlertas]);
+
+  const cambiarFiltrosAlertas = (actualizar) => {
+    setFiltrosAlertas(actualizar);
+    setPaginaAlertas(1);
+  };
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/api/v1/nlp/departments`)
@@ -268,7 +279,10 @@ function Dashboard() {
           <BandejaAlertas
             alertas={alertas}
             filtrosAlertas={filtrosAlertas}
-            setFiltrosAlertas={setFiltrosAlertas}
+            setFiltrosAlertas={cambiarFiltrosAlertas}
+            pagina={paginaAlertas}
+            hayMas={hayMasAlertas}
+            cambiarPagina={setPaginaAlertas}
             actualizarEstadoAlerta={actualizarEstadoAlerta}
             departamentos={departamentos}
             cargando={cargando}

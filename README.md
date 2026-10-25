@@ -58,7 +58,8 @@ Los comentarios no se asocian a una cuenta de empleado. La sanitización es heur
    | AZURE_LANGUAGE_KEY | Llave del recurso Azure AI Language. |
    | SMTP_HOST, SMTP_PORT, SMTP_TIMEOUT_SECONDS | Servidor y parámetros SMTP. Los valores predeterminados usan Gmail con STARTTLS. |
    | SMTP_EMAIL, SMTP_PASSWORD | Cuenta remitente y contraseña aceptada por SMTP. Para Gmail usa una contraseña de aplicación. |
-   | SMTP_ALERT_RECIPIENT | Destinatario de alertas; si queda vacío, el código usa rh@plurione.com. |
+   | SMTP_ALERT_RECIPIENT | Destinatario requerido si se habilita el envío de alertas por correo. No hay destinatario predeterminado. |
+   | RATE_LIMIT_STORAGE_URI | Almacenamiento del límite de solicitudes; `memory://` para una instancia local. Configure Redis para varias réplicas. |
 
 Para codificar valores URL, usa Python: python -c "from urllib.parse import quote; print(quote('valor', safe=''))". En Docker Compose, DATABASE_URL se construye con las variables URLENCODED y puede quedar vacía en .env. Si ejecutas el backend fuera de Docker, configura DATABASE_URL directamente.
 
@@ -154,7 +155,7 @@ La documentación interactiva y los esquemas completos están en http://localhos
 | GET /api/v1/nlp/stats | Agregados de sentimiento, temas y tendencia para un departamento y un mes calendario completos; requiere JWT. `department_id=0` representa comentarios sin departamento. |
 | POST /api/v1/nlp/upload-csv | Inicia una importación CSV; requiere JWT y rol autorizado. |
 | GET /api/v1/nlp/upload-csv/{import_id} | Consulta el estado de una importación; requiere JWT y rol autorizado. |
-| GET /api/v1/alerts/ | Consulta alertas; requiere JWT y rol autorizado. |
+| GET /api/v1/alerts/ | Consulta alertas paginadas (`page`, `page_size`, máximo 100); requiere JWT y rol autorizado. La respuesta indica si hay otra página en `X-Has-More`. |
 | PATCH /api/v1/alerts/{alert_id} | Actualiza el estado de una alerta; requiere JWT y rol autorizado. |
 
 La bandeja de alertas y la carga CSV están permitidas a `admin`, `hr` y `analyst`. Las métricas aceptan además `executive`. El buzón y el catálogo de departamentos son públicos. No hay actualmente filtros de autorización por departamento asociados a cada usuario.

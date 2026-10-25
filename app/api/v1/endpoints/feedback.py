@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Request, status
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import load_only
 from sqlalchemy import func
 from app.db.database import get_db, SessionLocal
 from app.db.models import FeedbackEntry, SentimentAnalysis, Alert, KeyPhrase, CSVImport
@@ -7,6 +8,7 @@ from app.schemas.feedback import FeedbackCreate, FeedbackResponse
 from app.services.sanitization import sanitize_text
 from app.services.ai_engine import analyze_sentiment_with_ai
 from app.core.security import require_roles
+from app.core.rate_limit import limiter
 from app.services.email_service import send_alert_email
 from app.db.models import Department
 from datetime import date, datetime, time, timedelta, timezone
@@ -54,7 +56,9 @@ def _safe_sentiment_distribution(label_counts: dict[str, int], minimum_count: in
     return ({} if suppressed else dict(label_counts)), suppressed
 
 @router.post("/analyze-feedback", response_model=FeedbackResponse)
+@limiter.limit("5/minute")
 def analyze_feedback(
+    request: Request,
     feedback: FeedbackCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -280,7 +284,9 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         db.close()
 
 @router.post("/upload-csv", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("3/minute")
 async def upload_feeback_csv(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -369,6 +375,13 @@ def get_dashboard_stats(
         FeedbackEntry.department_id,
         Department.name,
         FeedbackEntry.created_at,
+    ).options(
+        load_only(
+            SentimentAnalysis.id,
+            SentimentAnalysis.polarity_score,
+            SentimentAnalysis.sentiment_label,
+            SentimentAnalysis.metadata_ai,
+        )
     ).join(
         FeedbackEntry, SentimentAnalysis.feedback_entry_id == FeedbackEntry.id
     ).outerjoin(Department, FeedbackEntry.department_id == Department.id).filter(

@@ -4,11 +4,15 @@ from fastapi import FastAPI
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from contextlib import asynccontextmanager
 from app.api.v1.endpoints import feedback, auth, alerts
 from app.db.database import engine, SessionLocal
 from app.db import models
 from app.db.models import Department
+from app.core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 DEFAULT_DEPARTMENTS = [
@@ -81,6 +85,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -89,9 +96,10 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:5173"
     ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"]
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-Has-More"],
 )
 
 @app.get("/")

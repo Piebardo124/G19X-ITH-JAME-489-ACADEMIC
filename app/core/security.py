@@ -3,6 +3,9 @@ import jwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from app.db.database import get_db
+from app.db.models import User
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
@@ -23,7 +26,7 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def verify_token(token: str = Depends(oauth2_schema)):
+def verify_token(token: str = Depends(oauth2_schema), db: Session = Depends(get_db)):
     """Valida el token y devuelve la identidad y el rol incluidos en él."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -33,12 +36,12 @@ def verify_token(token: str = Depends(oauth2_schema)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        role: str = payload.get("role")
-
-        if email is None or role is None:
+        if email is None:
             raise credentials_exception
-
-        return {"email": email, "role": role}
+        user = db.query(User).filter(User.email == email).one_or_none()
+        if user is None or not user.role:
+            raise credentials_exception
+        return {"email": user.email, "role": user.role}
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(
