@@ -60,6 +60,9 @@ Los comentarios no se asocian a una cuenta de empleado. La sanitización es heur
    | SMTP_EMAIL, SMTP_PASSWORD | Cuenta remitente y contraseña aceptada por SMTP. Para Gmail usa una contraseña de aplicación. |
    | SMTP_ALERT_RECIPIENT | Destinatario requerido si se habilita el envío de alertas por correo. No hay destinatario predeterminado. |
    | RATE_LIMIT_STORAGE_URI | Almacenamiento del límite de solicitudes; `memory://` para una instancia local. Configure Redis para varias réplicas. |
+   | RATE_LIMIT_LOGIN | Límite del inicio de sesión. Predeterminado: `5/minute`. |
+   | RATE_LIMIT_FEEDBACK | Límite de envío de comentarios al buzón. Predeterminado: `5/minute`. |
+   | RATE_LIMIT_CSV_UPLOAD | Límite de carga de archivos CSV. Predeterminado: `3/minute`. |
 
 Para codificar valores URL, usa Python: python -c "from urllib.parse import quote; print(quote('valor', safe=''))". En Docker Compose, DATABASE_URL se construye con las variables URLENCODED y puede quedar vacía en .env. Si ejecutas el backend fuera de Docker, configura DATABASE_URL directamente.
 
@@ -122,6 +125,36 @@ docker compose exec web python -m app.create_admin_cli
 Escribe el correo y la contraseña cuando se soliciten. La contraseña se almacena con hash bcrypt. Entra al sistema desde http://localhost:5173/login. No hay una ruta pública para registrar administradores.
 
 El asistente CLI solo permite crear el administrador inicial y rechaza contraseñas de menos de 12 caracteres. No expongas el acceso al contenedor a usuarios no confiables.
+
+## Crear usuarios para la demo
+
+Con los servicios activos, crea por separado los usuarios que usarás para probar los permisos:
+
+~~~sh
+docker compose exec web python -m app.create_user_cli
+~~~
+
+El asistente solicita correo, rol y contraseña dos veces (la contraseña no se muestra al escribirla). Los roles admitidos son `hr`, `analyst` y `executive`; escribe el rol que quieras crear. El script normaliza el correo a minúsculas, rechaza correos duplicados, requiere una contraseña de al menos 12 caracteres y limita su tamaño a 72 bytes UTF-8 por el algoritmo bcrypt. Las contraseñas se guardan con hash bcrypt.
+
+Ejecuta el comando una vez por cada cuenta que necesites. El script no crea administradores: para crear el primer `admin`, usa `python -m app.create_admin_cli`. No existe registro público de usuarios. Conserva el acceso al contenedor y las contraseñas de prueba solo con las personas que participen en la demo.
+
+## Límites de solicitudes
+
+Los límites predeterminados se aplican por dirección IP:
+
+| Acción | Límite predeterminado | Endpoint |
+| --- | --- | --- |
+| Inicio de sesión | 5 solicitudes por minuto | `POST /api/v1/auth/login` |
+| Envío de comentario | 5 solicitudes por minuto | `POST /api/v1/nlp/analyze-feedback` |
+| Carga CSV | 3 solicitudes por minuto | `POST /api/v1/nlp/upload-csv` |
+
+Al exceder un límite, la API responde HTTP `429 Too Many Requests`; espera a que se renueve el periodo antes de reintentar. Los valores se pueden cambiar en `.env` con `RATE_LIMIT_LOGIN`, `RATE_LIMIT_FEEDBACK` y `RATE_LIMIT_CSV_UPLOAD`, usando la sintaxis de SlowAPI, por ejemplo `10/minute` o `2/minute`. Reinicia el servicio `web` después de editar `.env`:
+
+~~~sh
+docker compose restart web
+~~~
+
+El almacenamiento predeterminado `memory://` mantiene contadores en memoria del proceso y los reinicia al reiniciar la API. Para varias réplicas, configura `RATE_LIMIT_STORAGE_URI` con una URL de Redis accesible desde el contenedor (por ejemplo `redis://redis:6379`) y agrega/conecta Redis a la misma red de Docker. Si la API está detrás de un proxy, configura el proxy para conservar correctamente la IP del cliente; el limitador usa la dirección que ve FastAPI. Los límites protegen por IP y no representan una cuota global de llamadas a Azure.
 
 ## Buzón y carga CSV
 
@@ -194,13 +227,17 @@ python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_aler
 
 #### Procedencia y revisión de las etiquetas
 
-Los 200 comentarios del conjunto `documentos/evaluacion_ia_200.csv` fueron generados con asistencia de Codex. Julio Alfonso Monteverde Esquer realizó una primera revisión de los 200 comentarios y sus etiquetas el 21 de octubre de 2026. En esa revisión no se modificó el archivo. Se aplicaron estos criterios para la polaridad:
+Los 200 comentarios del conjunto `documentos/evaluacion_ia_200.csv` fueron generados con asistencia de Codex. Julio Alfonso Monteverde Esquer realizó una primera revisión de los 200 comentarios y sus etiquetas el 21 de octubre de 2026. En esa revisión no se modificó el archivo. Después se seleccionaron al azar 50 posiciones del CSV original: 4, 5, 10, 11, 12, 19, 23, 27, 29, 33, 38, 41, 45, 48, 54, 59, 63, 68, 71, 76, 82, 85, 87, 88, 91, 95, 99, 102, 108, 113, 119, 124, 128, 134, 137, 142, 144, 147, 150, 156, 161, 167, 170, 175, 178, 182, 189, 195, 198 y 200. Corresponden a los casos E004, E005, E010, E011, E012, E019, E023, E027, E029, E033, E038, E041, E045, E048, E054, E059, E063, E068, E071, E076, E082, E085, E087, E088, E091, E095, E099, E102, E108, E113, E119, E124, E128, E134, E137, E142, E144, E147, E150, E156, E161, E167, E170, E175, E178, E182, E189, E195, E198 y E200 del archivo de 200 casos.
+
+El compañero de residencias Bryan Julian Tanori Duarte revisó esas 50 muestras y confirmó que las etiquetas de polaridad existentes (Positivo, Neutral o Negativo) eran correctas. La fecha de esta revisión no fue proporcionada. El archivo `documentos/evaluacion_ia_50_seleccionados.csv` conserva las etiquetas esperadas; por ello, esta revisión de una muestra aleatoria no demuestra por sí sola un etiquetado ciego e independiente ni valida las etiquetas `expected_red_flag`. No se reportó una matriz de desacuerdos porque el revisor indicó que las 50 etiquetas de polaridad eran correctas.
+
+Se aplicaron estos criterios para la polaridad:
 
 - **Positivo:** comentarios no agresivos que expresan aspectos favorables de la empresa o describen un buen clima laboral.
 - **Neutral:** comentarios que no son claramente positivos ni agresivos, incluidos comentarios regulares que señalan algunos problemas.
 - **Negativo:** comentarios que expresan insultos, problemas, quejas o abusos.
 
-La revisión documenta la procedencia y el criterio aplicado; no equivale a una validación independiente por una segunda persona.
+La revisión completa inicial y la comprobación independiente de una muestra aleatoria documentan la procedencia y revisión humana de las etiquetas; la comprobación de 50 casos no sustituye una segunda anotación ciega de los 200 casos.
 
 El MVP fija `accuracy ≥85%` para polaridad y `recall ≥95%` para banderas rojas con un conjunto de al menos 200 comentarios etiquetados. Las etiquetas esperadas deben asignarlas y revisarlas personas; no uses predicciones de IA como etiquetas de referencia. El CSV de evaluación debe incluir:
 

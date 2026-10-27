@@ -8,7 +8,7 @@ from app.schemas.feedback import FeedbackCreate, FeedbackResponse
 from app.services.sanitization import sanitize_text
 from app.services.ai_engine import analyze_sentiment_with_ai
 from app.core.security import require_roles
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, FEEDBACK_RATE_LIMIT, CSV_UPLOAD_RATE_LIMIT
 from app.services.email_service import send_alert_email
 from app.db.models import Department
 from datetime import date, datetime, time, timedelta, timezone
@@ -56,7 +56,7 @@ def _safe_sentiment_distribution(label_counts: dict[str, int], minimum_count: in
     return ({} if suppressed else dict(label_counts)), suppressed
 
 @router.post("/analyze-feedback", response_model=FeedbackResponse)
-@limiter.limit("5/minute")
+@limiter.limit(FEEDBACK_RATE_LIMIT)
 def analyze_feedback(
     request: Request,
     feedback: FeedbackCreate,
@@ -284,7 +284,7 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         db.close()
 
 @router.post("/upload-csv", status_code=status.HTTP_202_ACCEPTED)
-@limiter.limit("3/minute")
+@limiter.limit(CSV_UPLOAD_RATE_LIMIT)
 async def upload_feeback_csv(
     request: Request,
     background_tasks: BackgroundTasks,

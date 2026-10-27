@@ -6,14 +6,14 @@ from passlib.context import CryptContext
 from app.db.database import get_db
 from app.db.models import User
 from app.core.security import create_access_token
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, LOGIN_RATE_LIMIT
 
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @router.post("/login")
-@limiter.limit("5/minute")
+@limiter.limit(LOGIN_RATE_LIMIT)
 def login_for_access_token(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
