@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from passlib.context import CryptContext
 
 from app.db.database import get_db
@@ -19,7 +20,8 @@ def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.email == form_data.username).first()
+    correo_limpio = form_data.username.strip().casefold()
+    user = db.query(User).filter(func.lower(User.email) == correo_limpio).first()
 
     if not user or not user.hashed_password or not pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(

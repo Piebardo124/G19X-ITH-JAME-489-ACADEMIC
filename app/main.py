@@ -1,11 +1,11 @@
 import time
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from contextlib import asynccontextmanager
 from app.api.v1.endpoints import feedback, auth, alerts
@@ -22,6 +22,12 @@ DEFAULT_DEPARTMENTS = [
     (4, "Ventas"),
     (5, "Finanzas"),
 ]
+
+def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Has superado el límite de solicitudes. Espera a que se renueve el límite e inténtalo de nuevo."}
+    )
 
 def init_db():
     for intento in range(5):
@@ -86,7 +92,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(

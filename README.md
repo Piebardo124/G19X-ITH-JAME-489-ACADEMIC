@@ -136,7 +136,7 @@ docker compose exec web python -m app.create_user_cli
 
 El asistente solicita correo, rol y contraseña dos veces (la contraseña no se muestra al escribirla). Los roles admitidos son `hr`, `analyst` y `executive`; escribe el rol que quieras crear. El script normaliza el correo a minúsculas, rechaza correos duplicados, requiere una contraseña de al menos 12 caracteres y limita su tamaño a 72 bytes UTF-8 por el algoritmo bcrypt. Las contraseñas se guardan con hash bcrypt.
 
-Ejecuta el comando una vez por cada cuenta que necesites. El script no crea administradores: para crear el primer `admin`, usa `python -m app.create_admin_cli`. No existe registro público de usuarios. Conserva el acceso al contenedor y las contraseñas de prueba solo con las personas que participen en la demo.
+Ejecuta el comando una vez por cada cuenta que necesites. Para la demo, ejecútalo tres veces y crea una cuenta de cada rol (`hr`, `analyst` y `executive`); el CLI pide el correo y rol en texto y la contraseña dos veces sin mostrarla. Usa correos distintos y guarda las credenciales de prueba de forma segura. El script no crea administradores: para crear el primer `admin`, usa `python -m app.create_admin_cli`. No existe registro público de usuarios. Conserva el acceso al contenedor y las contraseñas de prueba solo con las personas que participen en la demo.
 
 ## Límites de solicitudes
 
@@ -270,13 +270,56 @@ En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la im
 
 ### Recorrido manual para la evaluación
 
-1. Comprueba que `docker compose ps` muestre PostgreSQL, API y frontend activos.
-2. Abre `/docs` y confirma que la API responde.
-3. Crea el usuario inicial con el comando CLI y entra desde `/login`.
-4. Envía comentarios sintéticos desde el buzón. No uses información real de empleados durante una demostración.
-5. Con al menos cinco comentarios que sí hayan sido analizados por Azure OpenAI, comprueba las métricas del dashboard. Si falta la llave o Azure falla, el sistema guarda el comentario como no analizado y no lo incluye en esos agregados.
-6. Envía un comentario de prueba que active una alerta y verifica el registro en la bandeja. Para comprobar la entrega del correo, revisa el buzón de prueba y los logs; que exista una alerta no confirma que el correo haya sido enviado.
-7. Registra el resultado y el entorno de cada prueba. El MVP establece objetivos de latencia, accuracy y recall, pero estos deben medirse aparte con carga y un conjunto etiquetado.
+#### Ensayo desde cero
+
+Haz este ensayo solo con una base de datos desechable. `docker compose down -v` elimina el volumen `postgres_data`, incluidas cuentas, comentarios, alertas e importaciones existentes del proyecto.
+
+1. Detén el proyecto y borra su volumen de datos de demo:
+
+   ~~~sh
+   docker compose down -v
+   ~~~
+
+2. Verifica que `.env` esté configurado y levanta los servicios:
+
+   ~~~sh
+   docker compose up --build -d
+   docker compose ps
+   ~~~
+
+   Confirma que `db`, `web` y `frontend` estén activos. Si `web` no inicia, revisa `docker compose logs web` y `docker compose logs db` antes de continuar.
+
+3. Abre `http://localhost:8000/docs` y confirma que la API responde. Crea las cuentas de demo dentro del contenedor:
+
+   ~~~sh
+   docker compose exec web python -m app.create_admin_cli
+   docker compose exec web python -m app.create_user_cli
+   docker compose exec web python -m app.create_user_cli
+   docker compose exec web python -m app.create_user_cli
+   ~~~
+
+   En el primer comando crea el administrador inicial. En cada una de las tres ejecuciones siguientes escribe un correo único, selecciona respectivamente `hr`, `analyst` y `executive`, y captura la contraseña dos veces. Cada contraseña debe tener al menos 12 caracteres y no superar 72 bytes UTF-8. No escribas contraseñas en la bitácora.
+
+4. Prueba cada cuenta en `http://localhost:5173/login`, cerrando sesión antes de cambiar de usuario:
+
+   | Cuenta | Comprobaciones esperadas |
+   | --- | --- |
+   | `admin` | Entra al panel; ve la bandeja de alertas y puede cargar CSV. |
+   | `hr` | Entra al panel; ve la bandeja de alertas y puede cargar CSV. |
+   | `analyst` | Entra al panel; ve la bandeja de alertas y puede cargar CSV. |
+   | `executive` | Entra al panel y consulta métricas; no ve ni puede consultar la bandeja de alertas ni cargar CSV. |
+
+   Para la comprobación de permisos, la API debe responder `403` si `executive` intenta consultar `GET /api/v1/alerts/` o `POST /api/v1/nlp/upload-csv`. El buzón de comentarios es público y no requiere iniciar sesión.
+
+5. Envía comentarios sintéticos desde `http://localhost:5173/`. No uses información real de empleados. Para que aparezcan métricas, necesitas al menos cinco comentarios con análisis de Azure disponible; un comentario guardado como no analizado no cuenta para esos agregados.
+
+6. Envía un comentario sintético que active una alerta y confirma que aparece en la bandeja con el estado correspondiente. Si quieres verificar el correo, revisa el buzón de prueba y los logs; que exista una alerta no confirma que el correo haya sido entregado.
+
+7. Espera un minuto después de tu último inicio de sesión y comprueba el límite intentando iniciar sesión seis veces dentro del mismo minuto; el sexto intento debe mostrar el aviso de espera en vez del mensaje de credenciales incorrectas. El límite predeterminado es por IP y es `5/minute`.
+
+8. Registra fecha, sistema operativo, versiones de Docker, resultado de cada rol, métricas visibles, alerta y errores en `documentos/ensayo_demo_<fecha>.md`. No incluyas contraseñas, tokens ni datos personales.
+
+El ensayo acredita el flujo de uso y permisos en ese entorno; no sustituye la evaluación cuantitativa del modelo. Los umbrales de accuracy, recall y latencia se miden con el conjunto etiquetado y el procedimiento descrito arriba.
 
 ### Diagnóstico rápido
 
@@ -288,7 +331,7 @@ En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la im
 ## Estructura
 
 - app/api/v1/endpoints/: autenticación, comentarios, métricas y alertas.
-- app/core/: validación de JWT.
+- app/core/: validación de JWT y límites de solicitudes.
 - app/db/: conexión y modelos SQLAlchemy.
 - app/schemas/: validación y contratos de API.
 - app/services/: IA, sanitización y correo.

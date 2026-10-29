@@ -49,8 +49,12 @@ function Buzon() {
       setTimeout(() => setMensajeExito(''), 5000);
     } catch (error) {
       console.error("Error al enviar:", error.message);
-      const detalle = error.response?.data?.detail;
-      alert(detalle || "No se pudo enviar el comentario. Intenta de nuevo.");
+      if (error.response?.status === 429) {
+        alert("Has enviado demasiados comentarios en poco tiempo. Por favor espera.")
+      } else {
+        const detalle = error.response?.data?.detail;
+        alert(detalle || "No se pudo enviar el comentario. Intenta de nuevo.");
+      }
     } finally {
       setCargando(false);
     }

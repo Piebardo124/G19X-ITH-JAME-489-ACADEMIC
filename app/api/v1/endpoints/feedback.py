@@ -22,6 +22,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 MAX_CSV_ERROR_DETAILS = 100
+MAX_CSV_ROWS = 1000
 
 class CSVRowValidationError(ValueError):
     """Error de validación seguro para mostrar al usuario en el resumen CSV."""
@@ -177,6 +178,9 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         reader = csv.DictReader(io.StringIO(file_content))
         department_ids = {department.id for department in db.query(Department).all()}
         for index, row in enumerate(reader, start=1):
+            if totals["total_rows"] >= MAX_CSV_ROWS:
+                record_error(f"Se alcanzo el limite de {MAX_CSV_ROWS} filas.")
+                break
             totals["total_rows"] += 1
             try:
                 validated_row = _validate_csv_row(row, department_ids)

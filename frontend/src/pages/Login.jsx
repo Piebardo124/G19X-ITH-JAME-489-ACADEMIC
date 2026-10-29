@@ -28,7 +28,11 @@ function Login() {
             navigate('/dashboard');
         } catch(err) {
             console.error("Error de login:", err.message);
-            setError('Usuario o contraseña incorrectos');
+            if (err.response?.status === 429) {
+              setError('Demasiados Intentos. Por favor, espera unos minutos.');
+            } else {
+              setError('Usuario o contraseña incorrectos');
+            }
         }
     };
 

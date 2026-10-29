@@ -75,7 +75,7 @@ export default function BandejaAlertas({ alertas, filtrosAlertas, setFiltrosAler
                     <tr key={alerta.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '12px', color: '#64748b' }}>#{alerta.id}</td>
                         <td style={{ padding: '12px', fontWeight: 'bold', color: alerta.risk_level === 'ALTO' ? '#ef4444' : '#f59e0b' }}>
-                        {alerta.risk_level}
+                            {alerta.risk_level === 'ALTO' ? 'Alto' : alerta.risk_level}
                         </td>
                         <td style={{ padding: '12px' }}>{alerta.reason}</td>
                         <td style={{ padding: '12px' }}>
