@@ -1,0 +1,91 @@
+ Container plurione_analisissentimentalorganizacional-web-run-304f1e14d8f5 Creating 
+ Container plurione_analisissentimentalorganizacional-web-run-304f1e14d8f5 Created 
+PASS CLI administrador inicial
+Ya existe un administrador. El asistente solo permite crear el administrador inicial.
+PASS CLI rechaza segundo administrador
+PASS CLI crea hr
+PASS CLI crea analyst
+PASS CLI crea executive
+PASS CLI rechaza rol admin no permitido
+Rol inválido. Usa hr, analyst o executive.
+El correo no tiene un formato válido.
+PASS CLI rechaza correo inválido
+PASS CLI rechaza contraseña corta
+PASS CLI rechaza bcrypt más de 72 bytes
+La contraseña debe tener al menos 12 caracteres.
+La contraseña no puede superar 72 bytes UTF-8 (límite de bcrypt).
+Ya existe una cuenta con ese correo.
+PASS CLI rechaza correo duplicado normalizado
+PASS contraseñas persistidas con hash
+PASS login normalizado admin
+PASS login normalizado hr
+PASS login normalizado analyst
+PASS login normalizado executive
+PASS login contraseña incorrecta 401
+PASS JWT ausente 401
+PASS JWT inválido 401
+PASS JWT expirado 401
+PASS rol real de BD prevalece sobre claim JWT
+PASS métricas permitidas admin
+PASS alertas permiso admin
+PASS CSV permiso admin
+PASS métricas permitidas hr
+PASS alertas permiso hr
+PASS CSV permiso hr
+PASS métricas permitidas analyst
+PASS alertas permiso analyst
+PASS CSV permiso analyst
+PASS métricas permitidas executive
+PASS alertas permiso executive
+PASS CSV permiso executive
+PASS validación texto corto
+PASS validación texto largo
+PASS validación solo dígitos
+PASS validación no anónimo
+PASS validación departamento inexistente
+PASS buzón con Azure caso 1 HTTP 200
+PASS Azure real disponible caso 1
+LATENCIA caso 1: 3.622s
+PASS buzón con Azure caso 2 HTTP 200
+PASS Azure real disponible caso 2
+LATENCIA caso 2: 1.839s
+PASS buzón con Azure caso 3 HTTP 200
+PASS Azure real disponible caso 3
+LATENCIA caso 3: 1.833s
+PASS buzón con Azure caso 4 HTTP 200
+PASS Azure real disponible caso 4
+LATENCIA caso 4: 1.735s
+PASS buzón con Azure caso 5 HTTP 200
+PASS Azure real disponible caso 5
+LATENCIA caso 5: 1.705s
+PASS buzón con Azure caso 6 HTTP 200
+PASS Azure real disponible caso 6
+PASS PII no persistida
+LATENCIA caso 6: 1.796s
+PASS CSV aceptación 202
+PASS CSV resumen correcto 2/1/1
+PASS CSV advertencias visibles
+PASS alerta real generada y correo interceptado
+PASS métricas con muestra mínima
+PASS métricas sin texto de comentarios
+PASS privacidad menos de cinco respuestas
+PASS métricas rechazan mes parcial
+PASS cambio de alerta IN_PROGRESS
+PASS cambio de alerta CLOSED
+PASS cambio de alerta FALSE_POSITIVE
+PASS cambio de alerta OPEN
+PASS estado de alerta inválido 400
+PASS executive no modifica alerta
+PASS alertas page_size inválido 422
+PASS alertas fechas invertidas 400
+PASS CSV valida extensión
+PASS CSV valida cabecera
+PASS CSV valida UTF8
+PASS CSV valida más de 5MB
+PASS CSV límite de 1000 filas
+PASS login 429 con detail español
+PASS fallback IA guarda y avisa
+PASS buzón 429 con detail español
+PASS CORS http://localhost:5173
+PASS CORS https://evil.example.test
+RESULTADO: 76 PASS, 0 FAIL
