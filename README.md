@@ -344,7 +344,7 @@ El ensayo acredita el flujo de uso y permisos en ese entorno; no sustituye la ev
 
 ## Uso de herramientas de IA
 
-El desarrollo contó con asistencia de IA generativa (Codex). El autor revisó y ejecutó las pruebas y verificaciones descritas; los resultados reportados corresponden a las ejecuciones indicadas, no a una certificación externa.
+El desarrollo contó con asistencia de IA generativa (Codex) para solucionar errores menores, apoyar la auditoría del código y de seguridad, y generar scripts de pruebas. El autor revisó los cambios y participó en las pruebas y verificaciones descritas. Las bitácoras indican cuáles comprobaciones fueron automatizadas y cuáles fueron realizadas o confirmadas manualmente por el autor; los resultados corresponden a esas ejecuciones y no constituyen una certificación externa.
 
 ## Alcance y limitaciones
 
