@@ -272,6 +272,10 @@ En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la im
 
 #### Ensayo desde cero
 
+El [ensayo manual del 29 de octubre de 2026](documentos/ensayo_demo_2026-10-29.md) documenta la creación de cuentas para los cuatro roles, permisos en pantalla, carga de 200 comentarios, métricas, alertas, buzón y aviso 429 de login, según las confirmaciones del usuario durante el recorrido.
+
+Para conservar una instalación existente, el ensayo usó un proyecto separado con volúmenes nuevos: `docker compose down` y después `docker compose -p plurione-demo up --build -d`. En ese caso, todos los comandos posteriores deben incluir `-p plurione-demo`, por ejemplo `docker compose -p plurione-demo exec web python -m app.create_user_cli`. Al finalizar puedes detenerlo con `docker compose -p plurione-demo down` y volver a la instalación habitual con `docker compose up -d`; los volúmenes se conservan.
+
 Haz este ensayo solo con una base de datos desechable. `docker compose down -v` elimina el volumen `postgres_data`, incluidas cuentas, comentarios, alertas e importaciones existentes del proyecto.
 
 1. Detén el proyecto y borra su volumen de datos de demo:
