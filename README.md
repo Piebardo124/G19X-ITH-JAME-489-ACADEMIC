@@ -164,6 +164,8 @@ El almacenamiento predeterminado `memory://` mantiene contadores en memoria del 
 
 El buzón es público. Acepta comentarios de 5 a 3000 caracteres y requiere al menos una palabra de dos letras. El departamento es opcional. El texto se sanitiza antes de almacenarlo y analizarlo.
 
+La respuesta del buzón incluye `analysis_available`: `true` si el comentario fue analizado y `false` si se guardó sin análisis disponible. La interfaz muestra el primer resultado en verde y el segundo como advertencia en ámbar. Los avisos permanecen visibles hasta el siguiente envío válido. El login y el buzón muestran el `detail` del servidor ante un límite 429, con un mensaje de respaldo si falta.
+
 El CSV debe estar en UTF-8 e incluir la columna text_content. El límite es 5 MB. También se admiten is_anonymous y department_id; el MVP solo importa comentarios anónimos.
 
 ~~~csv
@@ -173,6 +175,8 @@ text_content,is_anonymous,department_id
 ~~~
 
 La importación corre en segundo plano dentro del proceso web, procesa filas secuencialmente y no tiene una cola durable. Si el backend se reinicia durante la tarea, no existe garantía de reanudación. El tamaño del archivo está limitado a 5 MB y se examinan como máximo 1000 filas de datos, sin contar la cabecera. Las filas omitidas o fallidas también cuentan para ese máximo. Si hay más de 1000 filas, se detiene el procesamiento al alcanzar el límite, las restantes no se importan y el resumen muestra una advertencia; no se rechaza todo el archivo por ese motivo.
+
+Cuando la importación termina correctamente o con observaciones, el panel vuelve a consultar las métricas del filtro seleccionado y las alertas, regresando a la primera página de la bandeja. No es necesario recargar la página. Una carga fallida muestra un error y no se presenta como completada.
 
 ## Métricas y privacidad
 
@@ -220,13 +224,13 @@ Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una valida
 La imagen del backend contiene `app/`, pero no incluye los archivos `test_*.py` ni `scripts/`. Para ejecutar las suites con sus dependencias dentro de Docker, monta el repositorio como solo lectura en un contenedor temporal. Desde la raíz del proyecto, en PowerShell:
 
 ~~~powershell
-docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
 En macOS/Linux:
 
 ~~~sh
-docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
 Para ejecutar solo privacidad, conserva el mismo comando y deja únicamente `test_privacy` después de `-v`. Esa suite cubre sanitización de PII, salidas generadas por IA y supresión de distribuciones pequeñas. También puedes ejecutar `python -m unittest -v ...` directamente desde la raíz en un entorno local con Python 3.12 y las dependencias del backend instaladas y configuradas; no ejecutes ese comando dentro de la imagen sin montar los archivos.
@@ -282,7 +286,7 @@ En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la im
 
 #### Ensayo desde cero
 
-El ensayo manual se repetirá. La bitácora anterior fue retirada; al terminar el nuevo recorrido, guarda sus resultados y evidencia en `documentos/ensayo_demo_<fecha>.md`. No registres un paso como aprobado antes de comprobarlo.
+El [ensayo manual del 7 de noviembre de 2026](documentos/ensayo_demo_2026-11-07.md), con referencia al commit `74a7cc49fbc7e3581e6868fc51e255c5135cf793`, documenta el recorrido indicado por el usuario y la evidencia del buzón: el correo quedó oculto, pero el nombre ficticio «Ana López» permaneció en los registros. El ensayo presenta esa incidencia y se repetirá después de corregir la sanitización. La bitácora manual anterior fue retirada. Al repetir el recorrido, guarda sus resultados y evidencia en `documentos/ensayo_demo_<fecha>.md`; no registres un paso como aprobado antes de comprobarlo.
 
 Los pasos siguientes usan el proyecto separado `plurione-demo`. Todos sus comandos llevan `-p plurione-demo` para distinguirlo de la instalación habitual. Antes de repetir el ensayo, conserva cualquier dato del entorno de demo que necesites: `docker compose -p plurione-demo down -v` elimina sus volúmenes, incluidas cuentas, comentarios, alertas, importaciones y dependencias del frontend de ese proyecto.
 

@@ -7,7 +7,7 @@ function Buzon() {
   const [texto, setTexto] = useState('');
   const [departamentoId, setDepartamentoId] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [mensajeExito, setMensajeExito] = useState('');
+  const [aviso, setAviso] = useState(null);
 
   const [departamentos, setDepartamentos] = useState([]);
 
@@ -34,6 +34,7 @@ function Buzon() {
     }
 
     setCargando(true);
+    setAviso(null);
     try {
       const respuesta = await axios.post(`${API_BASE_URL}/api/v1/nlp/analyze-feedback`, {
         text_content: textoLimpio,
@@ -44,15 +45,21 @@ function Buzon() {
       setTexto('');
       setDepartamentoId('');
 
-      setMensajeExito(respuesta.data.message || "Tu comentario fue registrado.");
-
-      setTimeout(() => setMensajeExito(''), 5000);
+      const sinAnalisis = respuesta.data.analysis_available === false;
+      setAviso({
+        mensaje: respuesta.data.message || (sinAnalisis
+          ? 'Comentario guardado, pero el análisis de IA no está disponible.'
+          : 'Tu comentario fue registrado y analizado.'),
+        tipo: sinAnalisis ? 'advertencia' : 'exito',
+      });
     } catch (error) {
       console.error("Error al enviar:", error.message);
+      const detalle = typeof error.response?.data?.detail === 'string'
+        ? error.response.data.detail.trim()
+        : '';
       if (error.response?.status === 429) {
-        alert("Has enviado demasiados comentarios en poco tiempo. Por favor espera.")
+        alert(detalle || 'Has enviado demasiados comentarios. Espera a que se renueve el límite e inténtalo de nuevo.');
       } else {
-        const detalle = error.response?.data?.detail;
         alert(detalle || "No se pudo enviar el comentario. Intenta de nuevo.");
       }
     } finally {
@@ -65,9 +72,13 @@ function Buzon() {
       <h1 style={{ color: '#1e293b' }}>PluriOne - Buzón Organizacional</h1>
       <p style={{ color: '#64748b', marginBottom: '30px' }}>Tu voz es importante. Cuéntanos cómo te sientes en tu entorno de trabajo.</p>
 
-      {mensajeExito && (
-        <div style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '15px', borderRadius: '5px', marginBottom: '20px', fontWeight: 'bold' }}>
-          {mensajeExito}
+      {aviso && (
+        <div role="status" aria-live="polite" style={{
+          backgroundColor: aviso.tipo === 'advertencia' ? '#fef3c7' : '#d1fae5',
+          color: aviso.tipo === 'advertencia' ? '#92400e' : '#065f46',
+          padding: '15px', borderRadius: '5px', marginBottom: '20px', fontWeight: 'bold',
+        }}>
+          {aviso.mensaje}
         </div>
       )}
 

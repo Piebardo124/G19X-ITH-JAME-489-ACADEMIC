@@ -28,10 +28,17 @@ function Login() {
             navigate('/dashboard');
         } catch(err) {
             console.error("Error de login:", err.message);
+            const detalle = typeof err.response?.data?.detail === 'string'
+              ? err.response.data.detail.trim()
+              : '';
             if (err.response?.status === 429) {
-              setError('Demasiados Intentos. Por favor, espera unos minutos.');
-            } else {
+              setError(detalle || 'Demasiados intentos. Espera a que se renueve el límite e inténtalo de nuevo.');
+            } else if (err.response?.status === 401) {
               setError('Usuario o contraseña incorrectos');
+            } else if (!err.response) {
+              setError('No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.');
+            } else {
+              setError(detalle || 'No se pudo iniciar sesión. Intenta de nuevo más tarde.');
             }
         }
     };

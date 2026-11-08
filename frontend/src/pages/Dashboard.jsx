@@ -111,6 +111,7 @@ function Dashboard() {
           const resultadoAlertas = resultados[indiceAlertas];
           if (resultadoAlertas.status === 'fulfilled') {
             setAlertas(resultadoAlertas.value.data);
+            setError('');
             setHayMasAlertas(resultadoAlertas.value.headers['x-has-more'] === 'true');
           } else {
             const err = resultadoAlertas.reason;
@@ -175,8 +176,14 @@ function Dashboard() {
           setMensajeCsv(`Error: no se pudo completar la carga. ${carga.errors || ''}`);
         } else if (carga.status === 'COMPLETED_WITH_WARNINGS') {
           setMensajeCsv(`Carga terminada con observaciones: ${resumen} ${carga.errors || ''}`);
-        } else {
+        } else if (carga.status === 'COMPLETED') {
           setMensajeCsv(`Carga completada: ${resumen}`);
+        } else {
+          setMensajeCsv('Error: la carga devolvió un estado desconocido. Consulta su estado antes de volver a enviarla.');
+        }
+        if (['COMPLETED', 'COMPLETED_WITH_WARNINGS'].includes(carga.status)) {
+          setPaginaAlertas(1);
+          setAlertRefreshKey((actual) => actual + 1);
         }
         setCsvImportId(null);
       } catch (err) {

@@ -140,6 +140,7 @@ def analyze_feedback(
             "status": "success",
             "message": mensaje,
             "entry_id": new_feedback.id,
+            "analysis_available": not analisis_no_disponible,
         }
 
     except HTTPException as he:

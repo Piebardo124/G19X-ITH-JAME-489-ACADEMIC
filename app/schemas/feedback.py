@@ -22,5 +22,6 @@ class FeedbackResponse(BaseModel):
     status: str
     message: str
     entry_id: UUID4
+    analysis_available: bool
 
 
