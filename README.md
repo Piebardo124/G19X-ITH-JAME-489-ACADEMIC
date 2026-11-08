@@ -92,6 +92,10 @@ Direcciones locales:
 - Swagger/OpenAPI: http://localhost:8000/docs
 - API: http://localhost:8000/
 
+La API permite solicitudes del navegador desde estos orígenes exactos: `http://localhost:5173`, `http://127.0.0.1:5173` y `http://localhost:3000`. El esquema, el nombre del host y el puerto forman parte del origen. Si Vite elige otro puerto porque el 5173 está ocupado, libera el puerto y reinicia el frontend, o configura explícitamente el origen correspondiente en `app/main.py`. `VITE_API_BASE_URL` cambia la dirección de la API utilizada por el frontend, pero no modifica CORS.
+
+La configuración actual de Compose publica los puertos 8000 y 5173 en todas las interfaces del equipo. Para restringir una demo al equipo local, cambia sus mapeos en `docker-compose.yml` a `127.0.0.1:8000:8000` y `127.0.0.1:5173:5173`, respectivamente, y recrea los servicios. CORS no limita el acceso a los puertos desde la red.
+
 Registros del backend:
 
 ~~~sh
@@ -148,10 +152,10 @@ Los límites predeterminados se aplican por dirección IP:
 | Envío de comentario | 5 solicitudes por minuto | `POST /api/v1/nlp/analyze-feedback` |
 | Carga CSV | 3 solicitudes por minuto | `POST /api/v1/nlp/upload-csv` |
 
-Al exceder un límite, la API responde HTTP `429 Too Many Requests`; espera a que se renueve el periodo antes de reintentar. Los valores se pueden cambiar en `.env` con `RATE_LIMIT_LOGIN`, `RATE_LIMIT_FEEDBACK` y `RATE_LIMIT_CSV_UPLOAD`, usando la sintaxis de SlowAPI, por ejemplo `10/minute` o `2/minute`. Reinicia el servicio `web` después de editar `.env`:
+Al exceder un límite, la API responde HTTP `429 Too Many Requests`; espera a que se renueve el periodo antes de reintentar. Los valores se pueden cambiar en `.env` con `RATE_LIMIT_LOGIN`, `RATE_LIMIT_FEEDBACK` y `RATE_LIMIT_CSV_UPLOAD`, usando la sintaxis de SlowAPI, por ejemplo `10/minute` o `2/minute`. Recrea el servicio `web` después de editar `.env` para que cargue las nuevas variables:
 
 ~~~sh
-docker compose restart web
+docker compose up -d --force-recreate web
 ~~~
 
 El almacenamiento predeterminado `memory://` mantiene contadores en memoria del proceso y los reinicia al reiniciar la API. Para varias réplicas, configura `RATE_LIMIT_STORAGE_URI` con una URL de Redis accesible desde el contenedor (por ejemplo `redis://redis:6379`) y agrega/conecta Redis a la misma red de Docker. Si la API está detrás de un proxy, configura el proxy para conservar correctamente la IP del cliente; el limitador usa la dirección que ve FastAPI. Los límites protegen por IP y no representan una cuota global de llamadas a Azure.
@@ -168,7 +172,7 @@ text_content,is_anonymous,department_id
 "El equipo tiene buena comunicación",true,1
 ~~~
 
-La importación corre en segundo plano dentro del proceso web, procesa filas secuencialmente y no tiene una cola durable. Si el backend se reinicia durante la tarea, no existe garantía de reanudación. El tamaño del archivo está limitado a 5 MB, pero el código no fija un máximo de filas.
+La importación corre en segundo plano dentro del proceso web, procesa filas secuencialmente y no tiene una cola durable. Si el backend se reinicia durante la tarea, no existe garantía de reanudación. El tamaño del archivo está limitado a 5 MB y se examinan como máximo 1000 filas de datos, sin contar la cabecera. Las filas omitidas o fallidas también cuentan para ese máximo. Si hay más de 1000 filas, se detiene el procesamiento al alcanzar el límite, las restantes no se importan y el resumen muestra una advertencia; no se rechaza todo el archivo por ese motivo.
 
 ## Métricas y privacidad
 
@@ -213,15 +217,21 @@ docker compose exec web python -m compileall -q app
 
 Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una validación funcional integral.
 
-La suite de regresión de privacidad se ejecuta desde la raíz con `python -m unittest -v test_privacy`. Cubre sanitización de PII, salidas generadas por IA y supresión de distribuciones pequeñas.
+La imagen del backend contiene `app/`, pero no incluye los archivos `test_*.py` ni `scripts/`. Para ejecutar las suites con sus dependencias dentro de Docker, monta el repositorio como solo lectura en un contenedor temporal. Desde la raíz del proyecto, en PowerShell:
 
-Para ejecutar todas las suites actuales desde la raíz del repositorio:
-
-~~~sh
-python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+~~~powershell
+docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
-`npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados.
+En macOS/Linux:
+
+~~~sh
+docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+~~~
+
+Para ejecutar solo privacidad, conserva el mismo comando y deja únicamente `test_privacy` después de `-v`. Esa suite cubre sanitización de PII, salidas generadas por IA y supresión de distribuciones pequeñas. También puedes ejecutar `python -m unittest -v ...` directamente desde la raíz en un entorno local con Python 3.12 y las dependencias del backend instaladas y configuradas; no ejecutes ese comando dentro de la imagen sin montar los archivos.
+
+Si utilizas el proyecto de demo, agrega `-p plurione-demo` después de `docker compose` en estos comandos. `npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados. La [bitácora de pruebas automatizadas del 29 de octubre](documentos/pruebas_sistema_2026-10-29.md) conserva los resultados de aquella ejecución y sus límites.
 
 ### Evaluación cuantitativa del modelo
 
@@ -272,34 +282,38 @@ En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la im
 
 #### Ensayo desde cero
 
-El [ensayo manual del 29 de octubre de 2026](documentos/ensayo_demo_2026-10-29.md) documenta la creación de cuentas para los cuatro roles, permisos en pantalla, carga de 200 comentarios, métricas, alertas, buzón y aviso 429 de login, según las confirmaciones del usuario durante el recorrido.
+El ensayo manual se repetirá. La bitácora anterior fue retirada; al terminar el nuevo recorrido, guarda sus resultados y evidencia en `documentos/ensayo_demo_<fecha>.md`. No registres un paso como aprobado antes de comprobarlo.
 
-Para conservar una instalación existente, el ensayo usó un proyecto separado con volúmenes nuevos: `docker compose down` y después `docker compose -p plurione-demo up --build -d`. En ese caso, todos los comandos posteriores deben incluir `-p plurione-demo`, por ejemplo `docker compose -p plurione-demo exec web python -m app.create_user_cli`. Al finalizar puedes detenerlo con `docker compose -p plurione-demo down` y volver a la instalación habitual con `docker compose up -d`; los volúmenes se conservan.
+Los pasos siguientes usan el proyecto separado `plurione-demo`. Todos sus comandos llevan `-p plurione-demo` para distinguirlo de la instalación habitual. Antes de repetir el ensayo, conserva cualquier dato del entorno de demo que necesites: `docker compose -p plurione-demo down -v` elimina sus volúmenes, incluidas cuentas, comentarios, alertas, importaciones y dependencias del frontend de ese proyecto.
 
-Haz este ensayo solo con una base de datos desechable. `docker compose down -v` elimina el volumen `postgres_data`, incluidas cuentas, comentarios, alertas e importaciones existentes del proyecto.
-
-1. Detén el proyecto y borra su volumen de datos de demo:
+1. Detén la instalación habitual para liberar los puertos, comprueba el entorno de demo y elimina únicamente sus datos desechables:
 
    ~~~sh
-   docker compose down -v
+   docker compose down
+   docker compose -p plurione-demo ps -a
+   docker compose -p plurione-demo down -v
    ~~~
 
-2. Verifica que `.env` esté configurado y levanta los servicios:
+2. Verifica que `.env` esté configurado. Registra el commit, las modificaciones locales y las versiones de Docker antes de levantar los servicios:
 
    ~~~sh
-   docker compose up --build -d
-   docker compose ps
+   git rev-parse HEAD
+   git status --short
+   docker --version
+   docker compose version
+   docker compose -p plurione-demo up --build -d
+   docker compose -p plurione-demo ps
    ~~~
 
-   Confirma que `db`, `web` y `frontend` estén activos. Si `web` no inicia, revisa `docker compose logs web` y `docker compose logs db` antes de continuar.
+   Guarda esas salidas en la bitácora. Si hay cambios locales, el commit por sí solo no identifica todo el código probado: registra qué archivos cambiaron y conserva el diff sin incluir secretos. Confirma que `db`, `web` y `frontend` estén activos. Si `web` no inicia, revisa `docker compose -p plurione-demo logs web` y `docker compose -p plurione-demo logs db` antes de continuar.
 
 3. Abre `http://localhost:8000/docs` y confirma que la API responde. Crea las cuentas de demo dentro del contenedor:
 
    ~~~sh
-   docker compose exec web python -m app.create_admin_cli
-   docker compose exec web python -m app.create_user_cli
-   docker compose exec web python -m app.create_user_cli
-   docker compose exec web python -m app.create_user_cli
+   docker compose -p plurione-demo exec web python -m app.create_admin_cli
+   docker compose -p plurione-demo exec web python -m app.create_user_cli
+   docker compose -p plurione-demo exec web python -m app.create_user_cli
+   docker compose -p plurione-demo exec web python -m app.create_user_cli
    ~~~
 
    En el primer comando crea el administrador inicial. En cada una de las tres ejecuciones siguientes escribe un correo único, selecciona respectivamente `hr`, `analyst` y `executive`, y captura la contraseña dos veces. Cada contraseña debe tener al menos 12 caracteres y no superar 72 bytes UTF-8. No escribas contraseñas en la bitácora.
@@ -317,13 +331,22 @@ Haz este ensayo solo con una base de datos desechable. `docker compose down -v` 
 
 5. Envía comentarios sintéticos desde `http://localhost:5173/`. No uses información real de empleados. Para que aparezcan métricas, necesitas al menos cinco comentarios con análisis de Azure disponible; un comentario guardado como no analizado no cuenta para esos agregados.
 
+   Prueba también un CSV sintético e identifica el archivo y la cantidad de filas en la bitácora. Espera el resumen final y registra cuántas se procesaron, omitieron o fallaron y si hubo avisos de análisis pendiente. Comprueba si las métricas y alertas se actualizan al terminar la carga sin recargar la página; si requieren recarga manual, anótalo como incidencia.
+
 6. Envía un comentario sintético que active una alerta y confirma que aparece en la bandeja con el estado correspondiente. Si quieres verificar el correo, revisa el buzón de prueba y los logs; que exista una alerta no confirma que el correo haya sido entregado.
 
 7. Espera un minuto después de tu último inicio de sesión y comprueba el límite intentando iniciar sesión seis veces dentro del mismo minuto; el sexto intento debe mostrar el aviso de espera en vez del mensaje de credenciales incorrectas. El límite predeterminado es por IP y es `5/minute`.
 
-8. Registra fecha, sistema operativo, versiones de Docker, resultado de cada rol, métricas visibles, alerta y errores en `documentos/ensayo_demo_<fecha>.md`. No incluyas contraseñas, tokens ni datos personales.
+8. Registra fecha, responsable, sistema operativo, versiones de Docker, commit y modificaciones locales, resultado de cada rol, filtros y métricas visibles, cambios de alerta y su persistencia tras recargar, resumen CSV y errores en `documentos/ensayo_demo_<fecha>.md`. Adjunta capturas o salidas reales con su fecha e indica si Azure y SMTP fueron reales, simulados o no comprobados. Conserva las evidencias referenciadas en el repositorio, sin contraseñas, tokens, llaves ni datos personales.
 
 El ensayo acredita el flujo de uso y permisos en ese entorno; no sustituye la evaluación cuantitativa del modelo. Los umbrales de accuracy, recall y latencia se miden con el conjunto etiquetado y el procedimiento descrito arriba.
+
+Al terminar, puedes conservar los datos de la nueva demo deteniéndola sin `-v` y volver a la instalación habitual:
+
+~~~sh
+docker compose -p plurione-demo down
+docker compose up -d
+~~~
 
 ### Diagnóstico rápido
 

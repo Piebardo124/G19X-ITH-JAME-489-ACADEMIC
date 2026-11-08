@@ -51,13 +51,15 @@ La creación no administrativa se comprobó invocando la función de validación
 6. Se entró como analyst y se comprobó que estaban visibles la bandeja y el control CSV; se cerró sesión.
 7. Se hicieron intentos inválidos de login y se verificó el aviso «Demasiados Intentos. Por favor, espera unos minutos» al recibir 429.
 
-Evidencia visual del formulario: `documentos/qa_login_20261029.jpg`. El aviso 429 se comprobó en el árbol de accesibilidad del navegador y en los registros HTTP de la API. La distribución del formulario original se comprobó con un ancho de 400 px en un viewport de 1280 × 720.
+El aviso 429 se comprobó en el árbol de accesibilidad del navegador y en los registros HTTP de la API. La distribución del formulario original se comprobó con un ancho de 400 px en un viewport de 1280 × 720. La captura citada originalmente no está disponible en el repositorio; por ello, esta bitácora no aporta evidencia visual adjunta del formulario. El próximo ensayo deberá guardar sus propias capturas con su fecha real.
 
 ## Hallazgos de esta ejecución
 
 ### Instrucción de pruebas del README no reproducible dentro de la imagen
 
 El comando `docker compose exec web python -m unittest ...` falló al importar las seis suites: la imagen copia `app/`, pero no los archivos `test_*.py` ni `scripts/`. No fue un fallo de las aserciones del código. Al montar el repositorio en un contenedor temporal, las 19 pruebas pasaron.
+
+Actualización documental del 7 de noviembre de 2026: el README ya distingue la ejecución local de las suites y su ejecución en Docker con el repositorio montado. Este cambio de instrucciones no implica una nueva ejecución de las pruebas históricas.
 
 Comando utilizado desde la raíz del proyecto en Windows:
 
