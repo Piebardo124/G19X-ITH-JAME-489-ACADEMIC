@@ -28,7 +28,7 @@ def list_alerts(
     department_id: Optional[int] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
     page_size: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
@@ -53,6 +53,8 @@ def list_alerts(
             Alert.created_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc)
         )
     if date_to:
+        if date_to == date.max:
+            raise HTTPException(status_code=400, detail="Fecha final fuera del rango admitido.")
         query = query.filter(
             Alert.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc)
         )

@@ -218,7 +218,7 @@ En el contenedor del backend:
 
 ~~~sh
 docker compose exec web pip check
-docker compose exec web python -m compileall -q app
+docker compose exec web python -X pycache_prefix=/tmp/plurione-pycache -m compileall -q app
 ~~~
 
 Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una validación funcional integral.
@@ -226,18 +226,22 @@ Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una valida
 La imagen del backend contiene `app/`, pero no incluye los archivos `test_*.py` ni `scripts/`. Para ejecutar las suites con sus dependencias dentro de Docker, monta el repositorio como solo lectura en un contenedor temporal. Desde la raíz del proyecto, en PowerShell:
 
 ~~~powershell
-docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_api_hardening test_ai_engine_validation test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
 En macOS/Linux:
 
 ~~~sh
-docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_api_hardening test_ai_engine_validation test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
 Para ejecutar solo privacidad, conserva el mismo comando y deja `test_sanitization_regression test_privacy` después de `-v`. Estas suites cubren nombres tras cargos, conservación del contexto, correos Unicode, teléfonos con separadores, RFC, CURP, etiquetas existentes, doble sanitización y aplicación antes de guardar o analizar, además de salidas generadas por IA y supresión de distribuciones pequeñas. La detección sigue siendo heurística: no garantiza reconocer cualquier nombre o identificador. Los registros históricos no se modifican automáticamente con una corrección del sanitizador. También puedes ejecutar `python -m unittest -v ...` directamente desde la raíz en un entorno local con Python 3.12 y las dependencias del backend instaladas y configuradas; no ejecutes ese comando dentro de la imagen sin montar los archivos.
 
-Si utilizas el proyecto de demo, agrega `-p plurione-demo` después de `docker compose` en estos comandos. `npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados. La [bitácora de pruebas automatizadas del 29 de octubre](documentos/pruebas_sistema_2026-10-29.md) conserva los resultados de aquella ejecución y sus límites.
+Si utilizas el proyecto de demo, agrega `-p plurione-demo` después de `docker compose` en estos comandos. `npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados. Registra los resultados de una nueva ejecución sobre la versión que vas a presentar; las bitácoras anteriores fueron retiradas.
+
+El motor exige de 3 a 5 frases clave únicas en la respuesta original de IA. Después de sanitizar pueden quedar menos: se devuelven solo las frases seguras, sin relleno artificial, y se registra `metadata_ai.key_phrases_suppressed`. Las colisiones se comparan sin distinguir mayúsculas y normalizando espacios. Una frase ambigua se omite; una explicación de riesgo que no puede sanitizarse conserva el comportamiento de análisis no disponible.
+
+Las suites `test_ai_engine_validation` y `test_api_hardening` cubren catálogos, explicación obligatoria de riesgos, supresión de frases, puntuaciones inválidas, JWT sin expiración, entradas extremas y archivos CSV mal formados. Los límites de paginación son una protección transitoria: alertas admite páginas entre 1 y 10000, con un máximo de 100 resultados por página.
 
 ### Evaluación cuantitativa del modelo
 
@@ -276,29 +280,30 @@ python scripts/evaluar_modelo.py --csv documentos/evaluacion_ia_200.csv
 
 El script exige 200 casos por defecto, pausa un segundo entre comentarios y escribe un JSON con accuracy, recall, cobertura, matriz de confusión y latencias media/p50/p95 por caso en `documentos/`. Los análisis no disponibles cuentan como incorrectos para accuracy y como falsos negativos si el caso esperado era una bandera roja. La latencia reportada incluye sanitización local y las dos etapas de IA; excluye UI, HTTP de la aplicación y escritura en PostgreSQL. Cada caso invoca Azure AI Language y Azure OpenAI, así que la ejecución consume cuota y puede generar cargos. Un p95 inferior a 3 segundos es una referencia operativa para el criterio del MVP; confirma con el maestro qué percentil evaluará.
 
-#### Corrida oficial
+#### Nueva corrida de evaluación
 
-La corrida oficial es `documentos/evaluacion_modelo_20261022_025516Z.json`, generada el 22 de octubre de 2026 a las 02:55 UTC. Sobre 200 comentarios obtuvo accuracy de 86.5% (173/200), recall de banderas rojas de 100% (24/24), latencia p95 de 1.9938 segundos y cobertura de 99.5% (199/200). Cumplió los tres umbrales configurados: accuracy ≥85%, recall ≥95% y p95 <3 segundos. Un análisis no estuvo disponible y se contó como error; la latencia máxima fue 12.2637 segundos, aunque el p95 quedó bajo el objetivo. Las llamadas a IA pueden producir resultados distintos entre corridas.
+Los informes y registros históricos fueron retirados para preparar una nueva evaluación. Ejecuta el procedimiento anterior con el código actual y conserva el JSON que genere. No atribuyas a esta versión resultados de corridas anteriores ni marques los umbrales del MVP como cumplidos sin medirlos de nuevo.
 
-### Evidencia de Azure en QA
+### Archivo de prueba funcional
 
-En la prueba de QA con `documentos/comentarios_sinteticos_2026-10-17.csv`, la importación terminó con 25/25 comentarios procesados, 0 omitidos y 0 fallidos. Los 25 tuvieron análisis disponible: 9 positivos, 8 neutrales y 8 negativos; la polaridad media fue `+0.0452` (el panel la muestra como `+0.05`). Esto verifica el flujo integrado con la configuración Azure usada en QA. La muestra de 25 no demuestra los umbrales de accuracy/recall del MVP, y esa ejecución no midió latencia.
+Para el recorrido funcional puedes utilizar `documentos/comentarios_sinteticos_2026-10-17.csv`. Comprueba en la nueva ejecución las filas procesadas, omitidas y fallidas y la disponibilidad real del análisis. Importar comentarios no sustituye la medición de accuracy, recall y latencia contra etiquetas humanas.
 
 ### Recorrido manual para la evaluación
 
 #### Ensayo desde cero
 
-El [ensayo manual del 7 de noviembre de 2026](documentos/ensayo_demo_2026-11-07.md), con referencia al commit `74a7cc49fbc7e3581e6868fc51e255c5135cf793`, documenta el recorrido indicado por el usuario y la evidencia del buzón: el correo quedó oculto, pero el nombre ficticio «Ana López» permaneció en los registros. El ensayo presenta esa incidencia y se repetirá después de corregir la sanitización. La bitácora manual anterior fue retirada. Al repetir el recorrido, guarda sus resultados y evidencia en `documentos/ensayo_demo_<fecha>.md`; no registres un paso como aprobado antes de comprobarlo.
+Las bitácoras e informes anteriores fueron retirados. Realiza este recorrido con los archivos actuales y guarda una nueva bitácora únicamente después de ejecutar las pruebas, en `documentos/ensayo_demo_<fecha>.md`. Registra lo que realmente ocurra, incluidos fallos o pasos no comprobados.
 
 Los pasos siguientes usan el proyecto separado `plurione-demo`. Todos sus comandos llevan `-p plurione-demo` para distinguirlo de la instalación habitual. Antes de repetir el ensayo, conserva cualquier dato del entorno de demo que necesites: `docker compose -p plurione-demo down -v` elimina sus volúmenes, incluidas cuentas, comentarios, alertas, importaciones y dependencias del frontend de ese proyecto.
 
-1. Detén la instalación habitual para liberar los puertos, comprueba el entorno de demo y elimina únicamente sus datos desechables:
+1. Detén la instalación habitual para liberar los puertos y comprueba el entorno de demo:
 
    ~~~sh
    docker compose down
    docker compose -p plurione-demo ps -a
-   docker compose -p plurione-demo down -v
    ~~~
+
+   **Reinicio opcional para un ensayo desde cero:** solo si todos los datos de `plurione-demo` son desechables, ejecuta `docker compose -p plurione-demo down -v`. Borra cuentas, comentarios, alertas e importaciones de ese proyecto. Si deseas conservarlos, omite ese comando y reutiliza las cuentas existentes; las métricas incluirán datos anteriores.
 
 2. Verifica que `.env` esté configurado. Registra el commit, las modificaciones locales y las versiones de Docker antes de levantar los servicios:
 
@@ -322,7 +327,7 @@ Los pasos siguientes usan el proyecto separado `plurione-demo`. Todos sus comand
    docker compose -p plurione-demo exec web python -m app.create_user_cli
    ~~~
 
-   En el primer comando crea el administrador inicial. En cada una de las tres ejecuciones siguientes escribe un correo único, selecciona respectivamente `hr`, `analyst` y `executive`, y captura la contraseña dos veces. Cada contraseña debe tener al menos 12 caracteres y no superar 72 bytes UTF-8. No escribas contraseñas en la bitácora.
+   Si conservaste el entorno y esas cuentas ya existen, reutilízalas. En un entorno vacío, el primer comando crea el administrador inicial. En cada una de las tres ejecuciones siguientes escribe un correo único, selecciona respectivamente `hr`, `analyst` y `executive`, y captura la contraseña dos veces. Cada contraseña debe tener al menos 12 caracteres y no superar 72 bytes UTF-8. No escribas contraseñas en la bitácora.
 
 4. Prueba cada cuenta en `http://localhost:5173/login`, cerrando sesión antes de cambiar de usuario:
 
@@ -333,19 +338,46 @@ Los pasos siguientes usan el proyecto separado `plurione-demo`. Todos sus comand
    | `analyst` | Entra al panel; ve la bandeja de alertas y puede cargar CSV. |
    | `executive` | Entra al panel y consulta métricas; no ve ni puede consultar la bandeja de alertas ni cargar CSV. |
 
-   Para la comprobación de permisos, la API debe responder `403` si `executive` intenta consultar `GET /api/v1/alerts/` o `POST /api/v1/nlp/upload-csv`. El buzón de comentarios es público y no requiere iniciar sesión.
+   Para comprobar también la autorización del servidor, abre Swagger en `http://localhost:8000/docs`, usa **Authorize** con la cuenta `executive` y ejecuta las rutas restringidas. La API debe responder `403` si intenta consultar `GET /api/v1/alerts/` o `POST /api/v1/nlp/upload-csv`. El buzón de comentarios es público y no requiere iniciar sesión.
 
 5. Envía comentarios sintéticos desde `http://localhost:5173/`. No uses información real de empleados. Para que aparezcan métricas, necesitas al menos cinco comentarios con análisis de Azure disponible; un comentario guardado como no analizado no cuenta para esos agregados.
 
-   Prueba también un CSV sintético e identifica el archivo y la cantidad de filas en la bitácora. Espera el resumen final y registra cuántas se procesaron, omitieron o fallaron y si hubo avisos de análisis pendiente. Comprueba si las métricas y alertas se actualizan al terminar la carga sin recargar la página; si requieren recarga manual, anótalo como incidencia.
+   Realiza la comprobación de sanitización descrita debajo. Después carga `documentos/comentarios_sinteticos_2026-10-17.csv` con un rol autorizado e identifica el archivo y la cantidad de filas en la bitácora. Espera el resumen final y registra cuántas se procesaron, omitieron o fallaron y si hubo avisos de análisis pendiente. Selecciona el departamento importado y el mes actual. Comprueba si las métricas y alertas se actualizan al terminar la carga sin recargar la página; si requieren recarga manual, anótalo como incidencia.
 
-6. Envía un comentario sintético que active una alerta y confirma que aparece en la bandeja con el estado correspondiente. Si quieres verificar el correo, revisa el buzón de prueba y los logs; que exista una alerta no confirma que el correo haya sido entregado.
+6. Envía `PRUEBA DEMO: La carga laboral excesiva me provoca agotamiento y deseo renunciar.` y confirma si Azure genera una alerta de nivel ALTO. Cambia su estado de Pendiente a En revisión y después a Atendida; recarga y comprueba que persiste. Si no se genera, registra el resultado real y revisa si el análisis estuvo disponible. Si quieres verificar el correo, revisa el buzón de prueba y los logs; que exista una alerta no confirma que el correo haya sido entregado.
 
 7. Espera un minuto después de tu último inicio de sesión y comprueba el límite intentando iniciar sesión seis veces dentro del mismo minuto; el sexto intento debe mostrar el aviso de espera en vez del mensaje de credenciales incorrectas. El límite predeterminado es por IP y es `5/minute`.
 
 8. Registra fecha, responsable, sistema operativo, versiones de Docker, commit y modificaciones locales, resultado de cada rol, filtros y métricas visibles, cambios de alerta y su persistencia tras recargar, resumen CSV y errores en `documentos/ensayo_demo_<fecha>.md`. Adjunta capturas o salidas reales con su fecha e indica si Azure y SMTP fueron reales, simulados o no comprobados. Conserva las evidencias referenciadas en el repositorio, sin contraseñas, tokens, llaves ni datos personales.
 
 El ensayo acredita el flujo de uso y permisos en ese entorno; no sustituye la evaluación cuantitativa del modelo. Los umbrales de accuracy, recall y latencia se miden con el conjunto etiquetado y el procedimiento descrito arriba.
+
+#### Comprobación manual de sanitización
+
+En el paso 5, envía este comentario ficticio desde el buzón, seleccionando un departamento:
+
+~~~text
+PRUEBA DEMO ACTUAL: Mi jefa Ana López me humilla en las juntas. Mi correo es demo@example.test y mi telefono 6621234567.
+~~~
+
+Si Azure está disponible, el aviso debe indicar que fue analizado; si se guardó sin análisis, registra la advertencia. Comprueba lo almacenado con esta consulta de solo lectura desde PowerShell:
+
+~~~powershell
+@'
+from app.db.database import SessionLocal
+from app.db.models import FeedbackEntry
+with SessionLocal() as db:
+    entries = db.query(FeedbackEntry).filter(
+        FeedbackEntry.content_text.contains("PRUEBA DEMO ACTUAL")
+    ).order_by(FeedbackEntry.created_at.desc()).limit(10).all()
+    for entry in entries:
+        print(entry.id, entry.content_text)
+'@ | docker compose -p plurione-demo exec -T web python -
+~~~
+
+El nombre, correo y teléfono deben quedar ocultos, preservando el sentido de la frase. Si el resultado difiere o no aparece el registro, anótalo como incidencia; el aviso de guardado no demuestra por sí solo que la sanitización sea correcta.
+
+Prueba después `Mi RFC es ABCD 123456 XYZ.`: el buzón debe mostrar el aviso de identificador ambiguo (HTTP 422), sin guardar ese comentario ni enviarlo a IA. Un texto corto como `hola` y otro exclusivamente numérico como `1234567` deben rechazarse. Las pruebas automatizadas cubren más variantes; la detección continúa siendo heurística.
 
 Al terminar, puedes conservar los datos de la nueva demo deteniéndola sin `-v` y volver a la instalación habitual:
 
@@ -373,7 +405,7 @@ docker compose up -d
 
 ## Uso de herramientas de IA
 
-El desarrollo contó con asistencia de IA generativa (Codex) para solucionar errores menores, apoyar la auditoría del código y de seguridad, y generar scripts de pruebas. El autor revisó los cambios y participó en las pruebas y verificaciones descritas. Las bitácoras indican cuáles comprobaciones fueron automatizadas y cuáles fueron realizadas o confirmadas manualmente por el autor; los resultados corresponden a esas ejecuciones y no constituyen una certificación externa.
+El desarrollo contó con asistencia de IA generativa (Codex) para solucionar errores menores, apoyar la auditoría del código y de seguridad, y generar scripts de pruebas. El autor revisó los cambios y participó en las pruebas. En las nuevas bitácoras se debe distinguir qué comprobaciones fueron automatizadas y cuáles fueron realizadas o confirmadas manualmente por el autor; los resultados corresponden a esas ejecuciones y no constituyen una certificación externa.
 
 ## Alcance y limitaciones
 

@@ -2,6 +2,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 import smtplib
+import ssl
 import logging
 from email.utils import parseaddr
 
@@ -53,7 +54,7 @@ Equipo PluriOne
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=timeout) as server:
-            server.starttls()
+            server.starttls(context=ssl.create_default_context())
             server.login(sender_email, sender_password)
             server.send_message(msg)
         logger.info("Se envió la alerta %s por correo.", alert_id)

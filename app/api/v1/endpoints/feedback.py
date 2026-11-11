@@ -29,9 +29,15 @@ class CSVRowValidationError(ValueError):
 
 def _validate_csv_row(row: dict, department_ids: set[int]):
     """Valida los campos admitidos y devuelve el texto y departamento normalizados."""
+    if None in row or any(value is None for value in row.values()):
+        raise CSVRowValidationError("La cantidad de celdas no coincide con los encabezados.")
     texto = (row.get("text_content") or "").strip()
     if len(texto) < 5 or len(texto) > 3000:
         return None
+    try:
+        texto = FeedbackCreate(text_content=texto).text_content
+    except ValueError:
+        raise CSVRowValidationError("El comentario debe incluir una palabra con al menos dos letras.")
 
     raw_anonymous = str(row.get("is_anonymous", "true")).strip().casefold()
     if raw_anonymous not in {"true", "1", "yes", "si", "sí"}:
@@ -179,7 +185,7 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         job.status = "PROCESSING"
         db.commit()
 
-        reader = csv.DictReader(io.StringIO(file_content))
+        reader = csv.DictReader(io.StringIO(file_content), strict=True)
         department_ids = {department.id for department in db.query(Department).all()}
         for index, row in enumerate(reader, start=1):
             if totals["total_rows"] >= MAX_CSV_ROWS:
@@ -311,9 +317,11 @@ async def upload_feeback_csv(
             raise HTTPException(status_code=413, detail="El CSV excede el límite de 5 MB.")
         decoded_content = content.decode("utf-8-sig")
 
-        headers = next(csv.reader(io.StringIO(decoded_content)), None)
+        headers = next(csv.reader(io.StringIO(decoded_content), strict=True), None)
         if not headers or "text_content" not in headers:
             raise HTTPException(status_code=400, detail="El CSV debe incluir la columna text_content.")
+        if len(headers) != len(set(headers)):
+            raise HTTPException(status_code=400, detail="El CSV contiene encabezados duplicados.")
 
         import_job = CSVImport(filename=filename[:255], status="QUEUED")
         db.add(import_job)
@@ -332,6 +340,8 @@ async def upload_feeback_csv(
         raise
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="El archivo CSV debe estar codificado en UTF-8.")
+    except csv.Error:
+        raise HTTPException(status_code=400, detail="El CSV contiene campos inválidos o demasiado grandes.")
 
 @router.get("/upload-csv/{import_id}")
 def get_csv_import_status(
@@ -367,6 +377,8 @@ def get_dashboard_stats(
 ):
     """Devuelve métricas agregadas sin incluir texto de comentarios."""
     last_day = calendar.monthrange(start_date.year, start_date.month)[1]
+    if end_date == date.max:
+        raise HTTPException(status_code=400, detail="Fecha final fuera del rango admitido.")
     if (
         start_date.day != 1
         or end_date.year != start_date.year
@@ -528,7 +540,7 @@ def get_dashboard_stats(
         "daily_trend_suppressed": daily_trend_suppressed,
         "daily_trend": [] if daily_trend_suppressed else [
             {"date": day, "total_responses": item["count"], "average_polarity": round(item["sum"] / item["count"], 2)}
-            for day, item in sorted(daily_totals.items())[-30:]
+            for day, item in sorted(daily_totals.items())
         ],
     }
 

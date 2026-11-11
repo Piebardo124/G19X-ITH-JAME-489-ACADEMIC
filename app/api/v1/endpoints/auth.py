@@ -20,6 +20,9 @@ def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    if "\x00" in form_data.password:
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos",
+                            headers={"WWW-Authenticate": "Bearer"})
     correo_limpio = form_data.username.strip().casefold()
     user = db.query(User).filter(func.lower(User.email) == correo_limpio).first()
 

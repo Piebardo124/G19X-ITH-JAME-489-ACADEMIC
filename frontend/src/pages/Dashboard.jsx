@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import CargaCsv from '../components/CargaCsv';
 import MetricasSentimiento from '../components/MetricasSentimiento';
 import BandejaAlertas from '../components/BandejaAlertas';
+import { mensajeError } from '../utils/errors';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -59,6 +60,8 @@ function Dashboard() {
       let indiceAlertas = null;
 
       if (departamentoFiltro && periodoFiltro) {
+        setAnaliticas(null);
+        setErrorAnaliticas('');
         const [anio, mes] = periodoFiltro.split('-').map(Number);
         const ultimoDia = new Date(anio, mes, 0).getDate();
         const params = {
@@ -98,7 +101,7 @@ function Dashboard() {
             setErrorAnaliticas('');
           } else {
             const err = resultadoAnaliticas.reason;
-            setErrorAnaliticas(err.response?.data?.detail || 'Analítica no disponible');
+            setErrorAnaliticas(mensajeError(err, 'Analítica no disponible'));
             if (err.response?.status === 401) {
               localStorage.removeItem('token');
               localStorage.removeItem('role');
@@ -188,7 +191,7 @@ function Dashboard() {
         setCsvImportId(null);
       } catch (err) {
         if (!cancelado) {
-          setMensajeCsv(`Error al consultar el estado de la carga: ${err.response?.data?.detail || 'intenta recargar el panel.'}`);
+          setMensajeCsv(`Error al consultar el estado de la carga: ${mensajeError(err, 'intenta recargar el panel.')}`);
           setCsvImportId(null);
         }
       }
@@ -249,7 +252,7 @@ function Dashboard() {
       setArchivoCsv(null);
     } catch (err) {
       console.error("Error al subir CSV:", err.message);
-      const errorDetail = err.response?.data?.detail || "Error desconocido al procesar el archivo.";
+      const errorDetail = mensajeError(err, "Error desconocido al procesar el archivo.");
       setMensajeCsv(`Error: ${errorDetail}`);
     } finally {
       setSubiendoCsv(false);
@@ -301,7 +304,7 @@ function Dashboard() {
             manejarSubidaCsv={manejarSubidaCsv}
             archivoCsv={archivoCsv}
             setArchivoCsv={setArchivoCsv}
-            subiendoCsv={subiendoCsv}
+            subiendoCsv={subiendoCsv || Boolean(csvImportId)}
             mensajeCsv={mensajeCsv}
           />
         </>

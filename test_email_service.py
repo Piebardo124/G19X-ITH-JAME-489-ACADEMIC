@@ -1,4 +1,5 @@
 import unittest
+import ssl
 from unittest.mock import patch
 
 from app.services.email_service import send_alert_email
@@ -14,8 +15,8 @@ class _FakeSMTP:
     def __exit__(self, *_args):
         return False
 
-    def starttls(self):
-        pass
+    def starttls(self, *, context):
+        self.context = context
 
     def login(self, *_args):
         pass
@@ -41,6 +42,8 @@ class EmailServiceTests(unittest.TestCase):
             sent = send_alert_email(7, "Estrés y carga de trabajo elevada")
 
         self.assertTrue(sent)
+        self.assertEqual(smtp.context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(smtp.context.check_hostname)
         self.assertIsNotNone(smtp.message)
         body = smtp.message.get_payload()[0]
         self.assertEqual(body.get_content_charset(), "utf-8")

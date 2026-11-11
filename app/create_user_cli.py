@@ -25,7 +25,7 @@ def create_user(email: str, role: str, password: str) -> bool:
     normalized_email = email.strip().casefold()
     normalized_role = role.strip().casefold()
 
-    if not EMAIL_PATTERN.fullmatch(normalized_email):
+    if len(normalized_email) > 100 or not EMAIL_PATTERN.fullmatch(normalized_email):
         logger.error("El correo no tiene un formato válido.")
         return False
     if normalized_role not in ALLOWED_ROLES:
@@ -34,7 +34,7 @@ def create_user(email: str, role: str, password: str) -> bool:
     if len(password) < MIN_PASSWORD_CHARACTERS:
         logger.error("La contraseña debe tener al menos 12 caracteres.")
         return False
-    if len(password.encode("utf-8")) > MAX_BCRYPT_PASSWORD_BYTES:
+    if len(password.encode("utf-8")) > MAX_BCRYPT_PASSWORD_BYTES or "\x00" in password:
         logger.error("La contraseña no puede superar 72 bytes UTF-8 (límite de bcrypt).")
         return False
 
@@ -79,4 +79,4 @@ def init_user() -> bool:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    init_user()
+    raise SystemExit(0 if init_user() else 1)

@@ -1,10 +1,11 @@
 import os
 import math
 import logging
+import unicodedata
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Literal
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.textanalytics import TextAnalyticsClient
@@ -12,18 +13,48 @@ from azure.ai.textanalytics import TextAnalyticsClient
 load_dotenv() 
 logger = logging.getLogger(__name__)
 
+
+def _unique_phrases(values):
+    """Mismo criterio de unicidad antes y después de ocultar datos personales."""
+    cleaned, seen = [], set()
+    for value in values:
+        phrase = " ".join(unicodedata.normalize("NFC", value).split())
+        key = phrase.casefold()
+        if phrase and key not in seen:
+            seen.add(key)
+            cleaned.append(phrase)
+    return cleaned
+
+
 class AIQualitativeResult(BaseModel):
     emotions_detected: List[Literal[
         "Entusiasmo/Motivación", "Satisfacción/Conformidad", "Agradecimiento",
         "Inconformidad/Molestia", "Frustración/Impotencia", "Estrés/Burnout"
-    ]] = Field(..., description ="Emociones del catálogo aprobado; vacío si no hay evidencia")
+    ]] = Field(..., description ="Emociones del catálogo")
     organizational_axes: List[Literal[
         "Liderazgo y management", "Carga de trabajo", "Ambiente laboral",
         "Compensaciones", "Herramientas"
-    ]] = Field (..., description = "Ejes del catologo MVP; Vacio si no hay evidencia.")
+    ]] = Field (..., description = "Ejes del catologo")
     risk_burnout: bool = Field(..., description="True si hay indicios de burnout, acoso o renuncia")
     red_flag_reason: str = Field(default="", description="Breve justificación si risk_burnout es True")
     key_phrases: List[str] = Field(..., min_length=3, max_length=5, description="Entre 3 y 5 frases clave")
+
+    @field_validator('key_phrases')
+    @classmethod
+    def validate_key_phrases(cls, values):
+        if any(not value.strip() for value in values):
+            raise ValueError("Las frases clave no pueden estar vacías.")
+        cleaned = _unique_phrases(values)
+        if not 3 <= len(cleaned) <= 5:
+            raise ValueError("Se requieren entre 3 y 5 frases clave únicas.")
+        return cleaned
+
+    @model_validator(mode="after")
+    def validate_risk_explanation(self):
+        self.red_flag_reason = self.red_flag_reason.strip()
+        if self.risk_burnout and not self.red_flag_reason:
+            raise ValueError("Se requiere una justificación si hay indicios de riesgo.")
+        return self
 
 def analyze_sentiment_with_ai(text: str) -> dict:
     """Analiza texto combinado Azure AI Language (Polaridad) y LangChain (Contexto)"""
@@ -59,6 +90,8 @@ def analyze_sentiment_with_ai(text: str) -> dict:
 
         score_seguro = round(polarity_score, 2)
         etiqueta_estricta = enforce_polarity_thresholds(score_seguro)
+        if etiqueta_estricta == "NO_DISPONIBLE":
+            raise ValueError("Azure devolvió una puntuación inválida.")
 
         # Analisis Cualitativo
 
@@ -84,10 +117,20 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         llm_result = chain.invoke({"texto_empleado": texto_seguro})
 
         # Sanitizacion de frases de salida
-        from app.services.sanitization import sanitize_text
-        frases_seguras = [sanitize_text(frase) for frase in llm_result.key_phrases]
-        motivo_seguro = sanitize_text(llm_result.red_flag_reason) if llm_result.red_flag_reason else ""
+        from app.services.sanitization import sanitize_text, SanitizationAmbiguityError
+        frases_seguras_raw = []
+        for phrase in llm_result.key_phrases:
+            try:
+                frases_seguras_raw.append(sanitize_text(phrase))
+            except SanitizationAmbiguityError:
+                # Omitir la frase ambigua sin inventar contenido ni perder
+                # el análisis válido de sentimiento y riesgo.
+                continue
+        frases_seguras = _unique_phrases(frases_seguras_raw)
+        motivo_seguro = sanitize_text(llm_result.red_flag_reason).strip() if llm_result.red_flag_reason else ""
 
+        if llm_result.risk_burnout and not motivo_seguro:
+            raise ValueError("La sanitizacion elimino la explicacion del riesgo.")
         # Ensamblaje del resultado para la base de datos
         return {
             "polarity_score": score_seguro,
@@ -98,6 +141,7 @@ def analyze_sentiment_with_ai(text: str) -> dict:
                 "organizational_axes": llm_result.organizational_axes,
                 "risk_burnout": llm_result.risk_burnout,
                 "red_flag_reason": motivo_seguro,
+                "key_phrases_suppressed": len(frases_seguras) < len(llm_result.key_phrases),
                 "is_simulation": False
             }
         }

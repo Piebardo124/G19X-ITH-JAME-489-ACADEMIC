@@ -34,7 +34,7 @@ def verify_token(token: str = Depends(oauth2_schema), db: Session = Depends(get_
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["exp", "sub"]})
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
