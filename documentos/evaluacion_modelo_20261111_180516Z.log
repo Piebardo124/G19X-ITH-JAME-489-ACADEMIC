@@ -1,0 +1,28 @@
+ Container plurione-demo-web-run-78931ab26985 Creating 
+ Container plurione-demo-web-run-78931ab26985 Created 
+Iniciando evaluación de 200 casos con el deployment gpt-4.1-mini-1. El script no guarda los comentarios en PostgreSQL.
+Evaluados 10/200 casos.
+Evaluados 20/200 casos.
+Evaluados 30/200 casos.
+Evaluados 40/200 casos.
+Evaluados 50/200 casos.
+Evaluados 60/200 casos.
+Evaluados 70/200 casos.
+Evaluados 80/200 casos.
+Evaluados 90/200 casos.
+Evaluados 100/200 casos.
+Evaluados 110/200 casos.
+Evaluados 120/200 casos.
+Evaluados 130/200 casos.
+Evaluados 140/200 casos.
+Evaluados 150/200 casos.
+Evaluados 160/200 casos.
+Evaluados 170/200 casos.
+Evaluados 180/200 casos.
+Evaluados 190/200 casos.
+Evaluados 200/200 casos.
+Accuracy de polaridad: 87.0% (174/200).
+Recall de banderas rojas: 100.0% (24/24).
+Latencia del pipeline IA: media 1.64s, p95 2.16s (objetivo <3.00s).
+Cobertura: 100.0%; reporte: /results/evaluacion_modelo_20261111_180516Z.json
+EXIT_CODE=0

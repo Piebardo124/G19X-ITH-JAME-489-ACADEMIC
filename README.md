@@ -282,7 +282,9 @@ El script exige 200 casos por defecto, pausa un segundo entre comentarios y escr
 
 #### Nueva corrida de evaluación
 
-Los informes y registros históricos fueron retirados para preparar una nueva evaluación. Ejecuta el procedimiento anterior con el código actual y conserva el JSON que genere. No atribuyas a esta versión resultados de corridas anteriores ni marques los umbrales del MVP como cumplidos sin medirlos de nuevo.
+La [evaluación del 11 de noviembre de 2026](documentos/evaluacion_modelo_2026-11-11.md), con el commit `a9b1cd52a986ba4bd57a3601098fd15e29dac262` y Azure real, obtuvo **87% de accuracy (174/200), 100% de recall de banderas rojas (24/24), 100% de cobertura y p95 de 2.1595 s**. Se conservan el [JSON por caso](documentos/evaluacion_modelo_20261111_180516Z.json) y la [salida de ejecución](documentos/evaluacion_modelo_20261111_180516Z.log). Hubo 26 errores de polaridad y tres falsos positivos de riesgo respecto a las etiquetas actuales. Una solicitud tardó 3.6086 s; p95 <3 s no significa que todas cumplan ese tiempo. El informe documenta el idioma inglés implícito del SDK, falsos positivos de sanitización y los límites del conjunto etiquetado.
+
+Los informes históricos anteriores fueron retirados. Para futuras versiones, repite el procedimiento y conserva una salida con nombre nuevo: estos resultados corresponden únicamente al código y al conjunto identificados en el informe.
 
 ### Archivo de prueba funcional
 
@@ -293,6 +295,8 @@ Para el recorrido funcional puedes utilizar `documentos/comentarios_sinteticos_2
 #### Ensayo desde cero
 
 Las bitácoras e informes anteriores fueron retirados. Realiza este recorrido con los archivos actuales y guarda una nueva bitácora únicamente después de ejecutar las pruebas, en `documentos/ensayo_demo_<fecha>.md`. Registra lo que realmente ocurra, incluidos fallos o pasos no comprobados.
+
+La [bitácora del 11 de noviembre de 2026](documentos/ensayo_demo_2026-11-11.md) documenta el ensayo del commit `a9b1cd52a986ba4bd57a3601098fd15e29dac262`: cinco envíos del caso de nombre después del cargo con ocultación correcta, verificaciones técnicas, métricas y alerta atendida. Conserva las evidencias, una observación sobre la claridad del motivo de alerta y los pasos pendientes de confirmación.
 
 Los pasos siguientes usan el proyecto separado `plurione-demo`. Todos sus comandos llevan `-p plurione-demo` para distinguirlo de la instalación habitual. Antes de repetir el ensayo, conserva cualquier dato del entorno de demo que necesites: `docker compose -p plurione-demo down -v` elimina sus volúmenes, incluidas cuentas, comentarios, alertas, importaciones y dependencias del frontend de ese proyecto.
 
@@ -392,6 +396,21 @@ docker compose up -d
 - **El análisis queda como no disponible:** revisa endpoint, llave y nombre del despliegue Azure en `.env`, y consulta `docker compose logs web`.
 - **No llega el correo:** confirma host, puerto, usuario, contraseña SMTP y destinatario; revisa los logs. El sistema no reintenta automáticamente ni guarda el estado de entrega del correo.
 - **No aparece una métrica:** confirma que haya al menos cinco análisis válidos en el rango filtrado; la IA debe haber producido polaridad, no basta con que el comentario esté guardado.
+
+## Informes de revisión actuales
+
+Los seis tipos de registros históricos se conservan en estas versiones del **11 de noviembre de 2026**, asociadas al commit `a9b1cd52a986ba4bd57a3601098fd15e29dac262`:
+
+| Registro | Archivo actual |
+| --- | --- |
+| Log de QA integrado | [qa_sistema_20261111.log](documentos/qa_sistema_20261111.log) |
+| Pruebas funcionales del sistema | [pruebas_sistema_2026-11-11.md](documentos/pruebas_sistema_2026-11-11.md) |
+| Evaluación del modelo por caso | [evaluacion_modelo_20261111_180516Z.json](documentos/evaluacion_modelo_20261111_180516Z.json) |
+| Auditoría funcional, de seguridad y arquitectura | [evaluacion_completa_2026-11-11.md](documentos/evaluacion_completa_2026-11-11.md) |
+| Bitácora de demo con evidencia manual y ampliación automatizada | [ensayo_demo_2026-11-11.md](documentos/ensayo_demo_2026-11-11.md) |
+| Análisis de errores del modelo | [analisis_errores_modelo_20261111.md](documentos/analisis_errores_modelo_20261111.md) |
+
+La repetición obtuvo **55 pruebas unitarias y 76 comprobaciones integradas correctas**, además de un recorrido de navegador con los cuatro roles, persistencia de alerta, resumen CSV, actualización automática del panel y aviso 429. Las comprobaciones adversas también encontraron fallos; consulta la auditoría para conocerlos. Se reutiliza la evaluación real de 200 casos del mismo día y código, documentada en el [informe del modelo](documentos/evaluacion_modelo_2026-11-11.md); no representa una segunda corrida. Las capturas y registros nuevos se conservan en `documentos/evidencias_revision_2026-11-11/`.
 
 ## Estructura
 
