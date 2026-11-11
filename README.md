@@ -20,7 +20,7 @@ La generación actual de alertas crea únicamente alertas de nivel `ALTO`; por e
 Buzón → validación y sanitización → análisis IA → PostgreSQL → métricas y alertas
 ~~~
 
-Los comentarios no se asocian a una cuenta de empleado. La sanitización es heurística y puede no detectar todos los datos identificables. El análisis apoya la revisión humana; no constituye una conclusión sobre una persona.
+Los comentarios no se asocian a una cuenta de empleado. La sanitización es heurística y puede no detectar todos los datos identificables. Por ejemplo, un nombre completamente en minúsculas y sin acentos puede ocultarse solo parcialmente (`Mi jefa ana lopez…`). Los formatos ambiguos de identificadores requieren revisión; el resultado no debe considerarse una garantía de anonimato. El análisis apoya la revisión humana; no constituye una conclusión sobre una persona.
 
 ## Requisitos
 
@@ -224,16 +224,16 @@ Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una valida
 La imagen del backend contiene `app/`, pero no incluye los archivos `test_*.py` ni `scripts/`. Para ejecutar las suites con sus dependencias dentro de Docker, monta el repositorio como solo lectura en un contenedor temporal. Desde la raíz del proyecto, en PowerShell:
 
 ~~~powershell
-docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
 En macOS/Linux:
 
 ~~~sh
-docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
 ~~~
 
-Para ejecutar solo privacidad, conserva el mismo comando y deja únicamente `test_privacy` después de `-v`. Esa suite cubre sanitización de PII, salidas generadas por IA y supresión de distribuciones pequeñas. También puedes ejecutar `python -m unittest -v ...` directamente desde la raíz en un entorno local con Python 3.12 y las dependencias del backend instaladas y configuradas; no ejecutes ese comando dentro de la imagen sin montar los archivos.
+Para ejecutar solo privacidad, conserva el mismo comando y deja `test_sanitization_regression test_privacy` después de `-v`. Estas suites cubren nombres tras cargos, conservación del contexto, correos Unicode, teléfonos con separadores, RFC, CURP, etiquetas existentes, doble sanitización y aplicación antes de guardar o analizar, además de salidas generadas por IA y supresión de distribuciones pequeñas. La detección sigue siendo heurística: no garantiza reconocer cualquier nombre o identificador. Los registros históricos no se modifican automáticamente con una corrección del sanitizador. También puedes ejecutar `python -m unittest -v ...` directamente desde la raíz en un entorno local con Python 3.12 y las dependencias del backend instaladas y configuradas; no ejecutes ese comando dentro de la imagen sin montar los archivos.
 
 Si utilizas el proyecto de demo, agrega `-p plurione-demo` después de `docker compose` en estos comandos. `npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados. La [bitácora de pruebas automatizadas del 29 de octubre](documentos/pruebas_sistema_2026-10-29.md) conserva los resultados de aquella ejecución y sus límites.
 

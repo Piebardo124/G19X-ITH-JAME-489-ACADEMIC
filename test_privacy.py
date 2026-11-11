@@ -129,6 +129,30 @@ class PrivacyTests(unittest.TestCase):
         self.assertEqual(result["polarity_score"], 0.91)
         self.assertEqual(result["sentiment_label"], "Positivo")
 
+    def test_contextual_names_are_removed_from_ai_output(self):
+        generated = AIQualitativeResult(
+            emotions_detected=["Estrés/Burnout"],
+            organizational_axes=["Liderazgo y management"],
+            risk_burnout=True,
+            red_flag_reason="Mi jefa Ana López me humilla. Mi correo es persona@ejemplo.com.",
+            key_phrases=["Mi jefa Ana López me humilla", "persona@ejemplo.com", "carga excesiva"],
+        )
+        with patch.dict(os.environ, {
+            "AZURE_OPENAI_API_KEY": "test-key", "AZURE_OPENAI_ENDPOINT": "https://example.test/",
+            "AZURE_LANGUAGE_KEY": "test-key", "AZURE_LANGUAGE_ENDPOINT": "https://example.test/",
+        }), patch("app.services.ai_engine.TextAnalyticsClient") as azure, \
+             patch("app.services.ai_engine.ChatOpenAI", _FakeLLM), \
+             patch.object(_FakeLLM, "result", generated), \
+             patch("app.services.ai_engine.ChatPromptTemplate.from_messages", return_value=_FakePrompt()):
+            azure.return_value.analyze_sentiment.return_value = [SimpleNamespace(
+                is_error=False, sentiment="negative",
+                confidence_scores=SimpleNamespace(positive=0.01, negative=0.9),
+            )]
+            result = analyze_sentiment_with_ai("Comentario previamente sanitizado")
+        self.assertEqual(result["key_phrases"][0], "Mi jefa [NOMBRE OCULTO] me humilla")
+        self.assertEqual(result["metadata_ai"]["red_flag_reason"],
+                         "Mi jefa [NOMBRE OCULTO] me humilla. Mi correo es [CORREO OCULTO].")
+
     def test_small_sentiment_category_suppresses_entire_distribution(self):
         distribution, suppressed = _safe_sentiment_distribution(
             {"Positivo": 8, "Negativo": 3, "Neutral": 7}
