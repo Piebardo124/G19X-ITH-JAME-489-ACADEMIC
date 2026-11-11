@@ -20,7 +20,9 @@ La generación actual de alertas crea únicamente alertas de nivel `ALTO`; por e
 Buzón → validación y sanitización → análisis IA → PostgreSQL → métricas y alertas
 ~~~
 
-Los comentarios no se asocian a una cuenta de empleado. La sanitización es heurística y puede no detectar todos los datos identificables. Por ejemplo, un nombre completamente en minúsculas y sin acentos puede ocultarse solo parcialmente (`Mi jefa ana lopez…`). Los formatos ambiguos de identificadores requieren revisión; el resultado no debe considerarse una garantía de anonimato. El análisis apoya la revisión humana; no constituye una conclusión sobre una persona.
+Los comentarios no se asocian a una cuenta de empleado. La sanitización combina patrones, contexto y reconocimiento lingüístico; incluye regresiones para nombres en minúsculas sin acentos, nombres separados por etiquetas y saltos de línea. Sigue siendo heurística y no garantiza reconocer cualquier identificador en texto libre. El análisis apoya la revisión humana; no constituye una conclusión sobre una persona.
+
+Un RFC con una posible homoclave separada por espacios puede confundirse con palabras del comentario. En esos casos el buzón responde `422` y solicita retirar el identificador antes de enviarlo: no lo almacena ni llama a IA. En CSV se marca la fila como fallida y se continúa con las demás. Los folios de diez dígitos se ocultan preventivamente como `[NUMERO OCULTO]`, porque el texto libre no permite verificar que no sean un teléfono. No se conservan por el simple hecho de que el remitente los llame «pedido» o «folio». Las correcciones no reescriben automáticamente registros históricos.
 
 ## Requisitos
 

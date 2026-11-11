@@ -134,8 +134,8 @@ class PrivacyTests(unittest.TestCase):
             emotions_detected=["Estrés/Burnout"],
             organizational_axes=["Liderazgo y management"],
             risk_burnout=True,
-            red_flag_reason="Mi jefa Ana López me humilla. Mi correo es persona@ejemplo.com.",
-            key_phrases=["Mi jefa Ana López me humilla", "persona@ejemplo.com", "carga excesiva"],
+            red_flag_reason="Mi jefa ana lopez me humilla. Mi correo es persona@ejemplo.com.",
+            key_phrases=["Mi jefa ana lopez me humilla", "persona@ejemplo.com", "carga excesiva"],
         )
         with patch.dict(os.environ, {
             "AZURE_OPENAI_API_KEY": "test-key", "AZURE_OPENAI_ENDPOINT": "https://example.test/",

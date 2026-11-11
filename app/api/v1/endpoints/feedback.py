@@ -5,7 +5,7 @@ from sqlalchemy import func
 from app.db.database import get_db, SessionLocal
 from app.db.models import FeedbackEntry, SentimentAnalysis, Alert, KeyPhrase, CSVImport
 from app.schemas.feedback import FeedbackCreate, FeedbackResponse
-from app.services.sanitization import sanitize_text
+from app.services.sanitization import sanitize_text, SanitizationAmbiguityError
 from app.services.ai_engine import analyze_sentiment_with_ai
 from app.core.security import require_roles
 from app.core.rate_limit import limiter, FEEDBACK_RATE_LIMIT, CSV_UPLOAD_RATE_LIMIT
@@ -143,6 +143,9 @@ def analyze_feedback(
             "analysis_available": not analisis_no_disponible,
         }
 
+    except SanitizationAmbiguityError as error:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(error))
     except HTTPException as he:
         db.rollback()
         raise he
@@ -244,7 +247,7 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                             index,
                             type(email_error).__name__,
                         )
-            except CSVRowValidationError as row_error:
+            except (CSVRowValidationError, SanitizationAmbiguityError) as row_error:
                 db.rollback()
                 totals["failed_rows"] += 1
                 record_error(f"Fila {index}: {row_error}")

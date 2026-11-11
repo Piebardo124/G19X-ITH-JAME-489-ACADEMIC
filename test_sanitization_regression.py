@@ -6,12 +6,12 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.services.sanitization import sanitize_text
+from app.services.sanitization import sanitize_text, SanitizationAmbiguityError
 
 
 class SanitizationRegressionTests(unittest.TestCase):
     def test_contextual_names_preserve_the_rest_of_the_sentence(self):
-        for name in ("Ana López", "ana lópez", "ANA LÓPEZ", "María del Carmen López",
+        for name in ("Ana López", "ana lópez", "ana lopez", "ANA LÓPEZ", "María del Carmen López",
                      "Ana-María López", "Ana O’Connor", "Juan Pérez"):
             with self.subTest(name=name):
                 self.assertEqual(
@@ -61,16 +61,42 @@ class SanitizationRegressionTests(unittest.TestCase):
 
     def test_rfc_does_not_consume_following_words_or_spaces(self):
         for suffix in (" y necesito ayuda.", " con datos.", " por favor.",
-                       " CON DATOS.", " POR FAVOR.", " FUE RECHAZADO.", " PAN GRATIS."):
+                       " CON DATOS.", " POR FAVOR.", " FUE RECHAZADO."):
             with self.subTest(suffix=suffix):
                 self.assertEqual(sanitize_text("Mi RFC es ABCD123456" + suffix),
                                  "Mi RFC es [RFC OCULTO]" + suffix)
 
     def test_rfc_formats(self):
-        for identifier in ("ABCD123456XYZ", "ABC123456XYZ", "ABCD 123456 XYZ", "abcd123456xyz"):
+        for identifier in ("ABCD123456XYZ", "ABC123456XYZ", "abcd123456xyz"):
             with self.subTest(identifier=identifier):
                 self.assertEqual(sanitize_text(f"Mi RFC es {identifier} y necesito ayuda."),
                                  "Mi RFC es [RFC OCULTO] y necesito ayuda.")
+
+    def test_ambiguous_rfc_is_rejected_instead_of_deleting_words(self):
+        for identifier in ("ABCD 123456 PAN GRATIS", "ABCD 123456 XYZ", "ABCD123456 XYZ", "ABCD123456 PAN GRATIS"):
+            with self.subTest(identifier=identifier), self.assertRaises(SanitizationAmbiguityError):
+                sanitize_text("Mi RFC es " + identifier)
+
+    def test_names_without_titles_and_across_redacted_regions(self):
+        for original, expected in (
+            ("Me llamo ana lopez y necesito ayuda.", "Me llamo [NOMBRE OCULTO] y necesito ayuda."),
+            ("Ana [CORREO OCULTO] López me humilla.", "[NOMBRE OCULTO] [CORREO OCULTO] [NOMBRE OCULTO] me humilla."),
+            ("La persona Ana React López me humilla.", "La persona [NOMBRE OCULTO] React [NOMBRE OCULTO] me humilla."),
+            ("Mi jefa Ana\nLópez me humilla.", "Mi jefa [NOMBRE OCULTO] me humilla."),
+            ("Mi compañera Azure me humilla.", "Mi compañera [NOMBRE OCULTO] me humilla."),
+        ):
+            with self.subTest(original=original):
+                self.assertEqual(sanitize_text(original), expected)
+                self.assertEqual(sanitize_text(expected), expected)
+
+    def test_long_folios_are_redacted_without_calling_them_phones(self):
+        self.assertEqual(sanitize_text("Pedido 1234567890 entregado."), "Pedido [NUMERO OCULTO] entregado.")
+        self.assertEqual(sanitize_text("Pedido 1234567890; teléfono 6621234567."),
+                         "Pedido [NUMERO OCULTO]; teléfono [TELEFONO OCULTO].")
+
+    def test_obfuscated_email(self):
+        self.assertEqual(sanitize_text("Escribir a persona[arroba]ejemplo[punto]com."),
+                         "Escribir a [CORREO OCULTO].")
 
     def test_curp(self):
         self.assertEqual(sanitize_text("Mi CURP es GODE561231HDFRRN09 y necesito ayuda."),
@@ -129,6 +155,26 @@ class SanitizationRegressionTests(unittest.TestCase):
                 ai.assert_called_once_with(expected)
             entries = [call.args[0] for call in db.add.call_args_list if isinstance(call.args[0], FeedbackEntry)]
             self.assertEqual([entry.content_text for entry in entries], [expected])
+        finally:
+            feedback.limiter.reset()
+
+    def test_buzon_rejects_ambiguous_pii_before_persistence_and_ai(self):
+        from app.api.v1.endpoints import feedback
+        from app.db.database import get_db
+
+        db = MagicMock()
+        app = FastAPI()
+        app.state.limiter = feedback.limiter
+        app.include_router(feedback.router)
+        app.dependency_overrides[get_db] = lambda: db
+        feedback.limiter.reset()
+        try:
+            with TestClient(app) as client, patch.object(feedback, "analyze_sentiment_with_ai") as ai:
+                response = client.post("/analyze-feedback", json={"text_content": "Mi RFC es ABCD 123456 XYZ."})
+                self.assertEqual(response.status_code, 422)
+                self.assertIn("Retira", response.json()["detail"])
+                ai.assert_not_called()
+                db.add.assert_not_called()
         finally:
             feedback.limiter.reset()
 
