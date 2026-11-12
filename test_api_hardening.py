@@ -50,6 +50,38 @@ class APIHardeningTests(unittest.TestCase):
             self.assertEqual(response.status_code, 400, response.text)
         self.db.add.assert_not_called()
 
+    def test_bad_csv_structure_is_rejected_before_creating_or_processing_an_import(self):
+        invalid_files = (
+            b'text_content\nComentario valido\n"sin cierre\n',
+            b'text_content\nComentario valido\n"texto"sobrante\n',
+            b'text_content,department_id\nComentario valido,1\nFalta departamento\n',
+            b'text_content\n' + b'Comentario valido\n' * 1000 + b'"sin cierre\n',
+        )
+        with patch.object(feedback, "process_csv_background") as process, \
+             patch.object(feedback, "analyze_sentiment_with_ai") as analyze:
+            for content in invalid_files:
+                with self.subTest(size=len(content)):
+                    feedback.limiter.reset()
+                    response = self.client.post(
+                        "/nlp/upload-csv", files={"file": ("bad.csv", content, "text/csv")}
+                    )
+                    self.assertEqual(response.status_code, 400, response.text)
+            self.db.add.assert_not_called()
+            self.db.commit.assert_not_called()
+            process.assert_not_called()
+            analyze.assert_not_called()
+
+    def test_nul_csv_filename_is_rejected_before_database_write(self):
+        body = (
+            b'--csv-test\r\nContent-Disposition: form-data; name="file"; filename="bad\x00.csv"\r\n'
+            b'Content-Type: text/csv\r\n\r\ntext_content\nComentario correcto\n\r\n--csv-test--\r\n'
+        )
+        response = self.client.post(
+            "/nlp/upload-csv", content=body, headers={"Content-Type": "multipart/form-data; boundary=csv-test"}
+        )
+        self.assertEqual(response.status_code, 400, response.text)
+        self.db.add.assert_not_called()
+
     def test_csv_rejects_numeric_text_and_extra_cells(self):
         for row in ({"text_content": "1234567"}, {"text_content": "Comentario válido", None: ["otra celda"]}):
             with self.subTest(row=row), self.assertRaises(feedback.CSVRowValidationError):

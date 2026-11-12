@@ -6,12 +6,16 @@ import CargaCsv from '../components/CargaCsv';
 import MetricasSentimiento from '../components/MetricasSentimiento';
 import BandejaAlertas from '../components/BandejaAlertas';
 import { mensajeError } from '../utils/errors';
+import {
+  clearCsvImport, csvImportMessage, csvImportStorageKey, loadCsvImport, pollCsvImport, saveCsvImport,
+} from '../utils/csvImport';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function Dashboard() {
   const role = localStorage.getItem('role');
   const puedeGestionarAlertas = ['admin', 'hr', 'analyst'].includes(role);
+  const csvStorageKey = csvImportStorageKey(localStorage.getItem('token'));
   const tituloPanel = role === 'executive'
     ? 'Panel Ejecutivo'
     : puedeGestionarAlertas ? 'Panel de Recursos Humanos' : 'Panel';
@@ -31,7 +35,10 @@ function Dashboard() {
   const [archivoCsv, setArchivoCsv] = useState(null);
   const [subiendoCsv, setSubiendoCsv] = useState(false);
   const [mensajeCsv, setMensajeCsv] = useState('');
-  const [csvImportId, setCsvImportId] = useState(null);
+  const [tipoMensajeCsv, setTipoMensajeCsv] = useState('progress');
+  const [csvImportId, setCsvImportId] = useState(() => puedeGestionarAlertas ? loadCsvImport(csvStorageKey) : null);
+  const [errorConsultaCsv, setErrorConsultaCsv] = useState(false);
+  const [csvPollKey, setCsvPollKey] = useState(0);
   const [alertRefreshKey, setAlertRefreshKey] = useState(0);
   const [paginaAlertas, setPaginaAlertas] = useState(1);
   const [hayMasAlertas, setHayMasAlertas] = useState(false);
@@ -155,54 +162,54 @@ function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!csvImportId) return undefined;
+    if (!csvImportId || !puedeGestionarAlertas) return undefined;
 
-    let cancelado = false;
-    let timeoutId;
-    const consultarEstado = async () => {
-      try {
+    return pollCsvImport({
+      requestStatus: async ({ signal }) => {
         const token = localStorage.getItem('token');
-        const respuesta = await axios.get(`${API_BASE_URL}/api/v1/nlp/upload-csv/${csvImportId}`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const response = await axios.get(`${API_BASE_URL}/api/v1/nlp/upload-csv/${csvImportId}`, {
+          headers: { Authorization: `Bearer ${token}` }, signal, timeout: 15000,
         });
-        if (cancelado) return;
-
-        const carga = respuesta.data;
-        if (['QUEUED', 'PROCESSING'].includes(carga.status)) {
-          setMensajeCsv(`Procesando CSV: ${carga.processed_rows} filas procesadas...`);
-          timeoutId = setTimeout(consultarEstado, 2000);
-          return;
-        }
-
-        const resumen = `${carga.processed_rows} procesadas, ${carga.skipped_rows} omitidas y ${carga.failed_rows} fallidas.`;
-        if (carga.status === 'FAILED') {
-          setMensajeCsv(`Error: no se pudo completar la carga. ${carga.errors || ''}`);
-        } else if (carga.status === 'COMPLETED_WITH_WARNINGS') {
-          setMensajeCsv(`Carga terminada con observaciones: ${resumen} ${carga.errors || ''}`);
-        } else if (carga.status === 'COMPLETED') {
-          setMensajeCsv(`Carga completada: ${resumen}`);
-        } else {
-          setMensajeCsv('Error: la carga devolvió un estado desconocido. Consulta su estado antes de volver a enviarla.');
-        }
-        if (['COMPLETED', 'COMPLETED_WITH_WARNINGS'].includes(carga.status)) {
-          setPaginaAlertas(1);
-          setAlertRefreshKey((actual) => actual + 1);
-        }
+        return response.data;
+      },
+      onProgress: (job) => {
+        setMensajeCsv(csvImportMessage(job).message);
+        setTipoMensajeCsv('progress');
+        setErrorConsultaCsv(false);
+      },
+      onTerminal: (job) => {
+        const result = csvImportMessage(job);
+        setMensajeCsv(result.message);
+        setTipoMensajeCsv(result.type);
+        setErrorConsultaCsv(false);
+        // Even FAILED may have committed rows before an unrecoverable failure.
+        setPaginaAlertas(1);
+        setAlertRefreshKey((actual) => actual + 1);
+        clearCsvImport(csvStorageKey);
         setCsvImportId(null);
-      } catch (err) {
-        if (!cancelado) {
-          setMensajeCsv(`Error al consultar el estado de la carga: ${mensajeError(err, 'intenta recargar el panel.')}`);
-          setCsvImportId(null);
-        }
-      }
-    };
-
-    consultarEstado();
-    return () => {
-      cancelado = true;
-      clearTimeout(timeoutId);
-    };
-  }, [csvImportId]);
+      },
+      onProblem: ({ error, retrying }) => {
+        const detail = mensajeError(error, 'No se pudo contactar con el servidor.');
+        setMensajeCsv(`No se pudo consultar la carga: ${detail} ${retrying
+          ? 'Volveremos a consultar automáticamente.'
+          : 'Puedes volver a consultar su estado.'} El archivo no necesita enviarse de nuevo.`);
+        setTipoMensajeCsv('warning');
+        setErrorConsultaCsv(true);
+      },
+      onMissing: () => {
+        setMensajeCsv('La importación ya no está disponible; revisa los resultados antes de reenviar el archivo.');
+        setTipoMensajeCsv('warning');
+        setErrorConsultaCsv(false);
+        clearCsvImport(csvStorageKey);
+        setCsvImportId(null);
+      },
+      onSessionExpired: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        navigate('/login');
+      },
+    });
+  }, [csvImportId, csvPollKey, csvStorageKey, navigate, puedeGestionarAlertas]);
 
   const cerrarSesion = () => {
     localStorage.removeItem('token');
@@ -230,10 +237,11 @@ function Dashboard() {
 
   const manejarSubidaCsv = async (e) => {
     e.preventDefault();
-    if (!archivoCsv) return;
+    if (!archivoCsv || subiendoCsv || csvImportId) return;
 
     setSubiendoCsv(true);
     setMensajeCsv('');
+    setTipoMensajeCsv('progress');
 
     const formData = new FormData();
     formData.append('file', archivoCsv);
@@ -248,12 +256,15 @@ function Dashboard() {
       });
 
       setMensajeCsv(respuesta.data.message);
+      saveCsvImport(csvStorageKey, respuesta.data.import_id);
       setCsvImportId(respuesta.data.import_id);
+      setErrorConsultaCsv(false);
       setArchivoCsv(null);
     } catch (err) {
       console.error("Error al subir CSV:", err.message);
       const errorDetail = mensajeError(err, "Error desconocido al procesar el archivo.");
       setMensajeCsv(`Error: ${errorDetail}`);
+      setTipoMensajeCsv('error');
     } finally {
       setSubiendoCsv(false);
     }
@@ -304,8 +315,11 @@ function Dashboard() {
             manejarSubidaCsv={manejarSubidaCsv}
             archivoCsv={archivoCsv}
             setArchivoCsv={setArchivoCsv}
-            subiendoCsv={subiendoCsv || Boolean(csvImportId)}
+            subiendoCsv={subiendoCsv}
+            importacionActiva={Boolean(csvImportId)}
             mensajeCsv={mensajeCsv}
+            tipoMensajeCsv={tipoMensajeCsv}
+            reintentarConsulta={errorConsultaCsv && csvImportId ? () => setCsvPollKey((actual) => actual + 1) : undefined}
           />
         </>
       )}

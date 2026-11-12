@@ -24,6 +24,8 @@ Los comentarios no se asocian a una cuenta de empleado. La sanitización combina
 
 Un RFC con una posible homoclave separada por espacios puede confundirse con palabras del comentario. En esos casos el buzón responde `422` y solicita retirar el identificador antes de enviarlo: no lo almacena ni llama a IA. En CSV se marca la fila como fallida y se continúa con las demás. Los folios de diez dígitos se ocultan preventivamente como `[NUMERO OCULTO]`, porque el texto libre no permite verificar que no sean un teléfono. No se conservan por el simple hecho de que el remitente los llame «pedido» o «folio». Las correcciones no reescriben automáticamente registros históricos.
 
+La sanitización detecta identificadores mediante una vista Unicode canónica y aplica los reemplazos sobre el texto original, conservando el resto del relato. Admite teléfonos agrupados de dos en dos, saltos de línea, guiones Unicode y barras; correos con espacios o caracteres de ancho completo; y etiquetas intercaladas que intenten dividir identificadores. También se aplica a las salidas generadas por IA. Los comentarios con NUL u otros controles peligrosos se rechazan antes de guardar o analizar: el buzón responde `422` y el CSV registra esa fila como fallida. Se permiten tabulaciones y saltos de línea normales. La detección de nombres usa un modelo de español y sigue siendo heurística: puede producir falsos positivos, especialmente en otros idiomas.
+
 ## Requisitos
 
 - Docker Desktop con Docker Compose v2, o Docker Engine y el complemento docker compose.
@@ -61,7 +63,7 @@ Un RFC con una posible homoclave separada por espacios puede confundirse con pal
    | SMTP_HOST, SMTP_PORT, SMTP_TIMEOUT_SECONDS | Servidor y parámetros SMTP. Los valores predeterminados usan Gmail con STARTTLS. |
    | SMTP_EMAIL, SMTP_PASSWORD | Cuenta remitente y contraseña aceptada por SMTP. Para Gmail usa una contraseña de aplicación. |
    | SMTP_ALERT_RECIPIENT | Destinatario requerido si se habilita el envío de alertas por correo. No hay destinatario predeterminado. |
-   | RATE_LIMIT_STORAGE_URI | Almacenamiento del límite de solicitudes; `memory://` para una instancia local. Configure Redis para varias réplicas. |
+   | RATE_LIMIT_STORAGE_URI | `memory://` para una instancia local. Para compartir límites entre procesos, usa el archivo opcional `docker-compose.redis.yml` o la URL de un Redis existente. |
    | RATE_LIMIT_LOGIN | Límite del inicio de sesión. Predeterminado: `5/minute`. |
    | RATE_LIMIT_FEEDBACK | Límite de envío de comentarios al buzón. Predeterminado: `5/minute`. |
    | RATE_LIMIT_CSV_UPLOAD | Límite de carga de archivos CSV. Predeterminado: `3/minute`. |
@@ -160,7 +162,18 @@ Al exceder un límite, la API responde HTTP `429 Too Many Requests`; espera a qu
 docker compose up -d --force-recreate web
 ~~~
 
-El almacenamiento predeterminado `memory://` mantiene contadores en memoria del proceso y los reinicia al reiniciar la API. Para varias réplicas, configura `RATE_LIMIT_STORAGE_URI` con una URL de Redis accesible desde el contenedor (por ejemplo `redis://redis:6379`) y agrega/conecta Redis a la misma red de Docker. Si la API está detrás de un proxy, configura el proxy para conservar correctamente la IP del cliente; el limitador usa la dirección que ve FastAPI. Los límites protegen por IP y no representan una cuota global de llamadas a Azure.
+El almacenamiento predeterminado `memory://` mantiene contadores en memoria de cada proceso y los reinicia al reiniciar la API. No necesita Redis. Para compartir contadores entre procesos, el proyecto incluye el cliente Redis en `requirements.txt` y una configuración opcional con un servicio Redis en la red interna de Compose:
+
+~~~sh
+docker compose -f docker-compose.yml -f docker-compose.redis.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.redis.yml exec redis redis-cli ping
+~~~
+
+El segundo comando debe responder `PONG`. La configuración opcional establece `RATE_LIMIT_STORAGE_URI=redis://redis:6379/0` en `web`, espera a que Redis esté saludable y no publica su puerto en el equipo. Conserva ambos argumentos `-f` en las operaciones posteriores de ese modo; si usas `-p`, conserva también el mismo nombre de proyecto. Esta configuración Redis guarda los contadores en memoria y los pierde si se reinicia Redis.
+
+Si ya tienes un Redis accesible, puedes usar sólo `docker-compose.yml` y configurar en `.env` su URL, por ejemplo `redis://servidor-redis:6379/0`; la URL debe resolver desde el contenedor. El archivo opcional sustituye esa variable por la dirección de su propio servicio. Para conexiones que lo requieran, usa la autenticación y el esquema `rediss://` del servidor. Después de actualizar las dependencias del proyecto, reconstruye `web` con `docker compose up -d --build web`: recrear un contenedor con una imagen antigua no instala el cliente nuevo.
+
+Si la API está detrás de un proxy, configura el proxy para conservar correctamente la IP del cliente; el limitador usa la dirección que ve FastAPI. Los límites protegen por IP y no representan una cuota global de llamadas a Azure.
 
 ## Buzón y carga CSV
 
@@ -168,7 +181,7 @@ El buzón es público. Acepta comentarios de 5 a 3000 caracteres y requiere al m
 
 La respuesta del buzón incluye `analysis_available`: `true` si el comentario fue analizado y `false` si se guardó sin análisis disponible. La interfaz muestra el primer resultado en verde y el segundo como advertencia en ámbar. Los avisos permanecen visibles hasta el siguiente envío válido. El login y el buzón muestran el `detail` del servidor ante un límite 429, con un mensaje de respaldo si falta.
 
-El CSV debe estar en UTF-8 e incluir la columna text_content. El límite es 5 MB. También se admiten is_anonymous y department_id; el MVP solo importa comentarios anónimos.
+El CSV debe estar en UTF-8 e incluir la columna text_content. El límite es 5 MB. También se admiten is_anonymous y department_id; el MVP solo importa comentarios anónimos. La API comprueba identidad y rol antes de leer el cuerpo y limita los bytes recibidos antes del parser multipart, además de verificar el tamaño exacto del archivo.
 
 ~~~csv
 text_content,is_anonymous,department_id
@@ -176,9 +189,13 @@ text_content,is_anonymous,department_id
 "El equipo tiene buena comunicación",true,1
 ~~~
 
-La importación corre en segundo plano dentro del proceso web, procesa filas secuencialmente y no tiene una cola durable. Si el backend se reinicia durante la tarea, no existe garantía de reanudación. El tamaño del archivo está limitado a 5 MB y se examinan como máximo 1000 filas de datos, sin contar la cabecera. Las filas omitidas o fallidas también cuentan para ese máximo. Si hay más de 1000 filas, se detiene el procesamiento al alcanzar el límite, las restantes no se importan y el resumen muestra una advertencia; no se rechaza todo el archivo por ese motivo.
+Antes de aceptar una carga, se valida la estructura del archivo completo, incluidos los encabezados, las comillas y la cantidad de celdas por fila. Un defecto estructural devuelve `400` sin crear una importación, guardar comentarios ni llamar a IA. Los errores de contenido de una fila válida estructuralmente se cuentan individualmente y se continúa con las demás.
 
-Cuando la importación termina correctamente o con observaciones, el panel vuelve a consultar las métricas del filtro seleccionado y las alertas, regresando a la primera página de la bandeja. No es necesario recargar la página. Una carga fallida muestra un error y no se presenta como completada.
+La importación corre en segundo plano dentro del proceso web, procesa filas secuencialmente y no tiene una cola durable. Si el backend se reinicia durante la tarea, no existe garantía de reanudación. El tamaño del archivo está limitado a 5 MB y se procesan como máximo 1000 filas de datos, sin contar la cabecera; la validación estructural sí revisa el archivo completo. Las filas omitidas o fallidas también cuentan para ese máximo. Si hay más de 1000 filas, las restantes no se importan y el resumen muestra una advertencia; no se rechaza todo el archivo por ese motivo. Los contadores de progreso se confirman junto con cada fila; un fallo general conserva los resultados de las filas ya guardadas.
+
+Al finalizar una importación, incluso con estado `FAILED`, el panel muestra sus contadores y vuelve a consultar las métricas del filtro seleccionado y las alertas, regresando a la primera página de la bandeja. Una carga fallida con resultados parciales advierte que los comentarios procesados ya se guardaron y que reenviar el archivo puede duplicarlos.
+
+Si una consulta de estado falla por red o por un error transitorio del servidor, el panel conserva el identificador y vuelve a consultar automáticamente. Mientras siga activo, impide enviar otro archivo. El seguimiento se recupera al recargar la misma pestaña mediante `sessionStorage`, separado por identidad; si el navegador bloquea ese almacenamiento, esa recuperación no está disponible. Un `404` confirmado libera el seguimiento y muestra que la carga ya no está disponible. Esto no proporciona idempotencia si se pierde la respuesta inicial antes de recibir el identificador, ni reanuda trabajos tras reiniciar el backend.
 
 ## Métricas y privacidad
 
@@ -211,6 +228,7 @@ Desde frontend:
 
 ~~~sh
 npm run lint
+npm test
 npm run build
 ~~~
 
@@ -226,18 +244,20 @@ Estas comprobaciones verifican dependencias y sintaxis; no sustituyen una valida
 La imagen del backend contiene `app/`, pero no incluye los archivos `test_*.py` ni `scripts/`. Para ejecutar las suites con sus dependencias dentro de Docker, monta el repositorio como solo lectura en un contenedor temporal. Desde la raíz del proyecto, en PowerShell:
 
 ~~~powershell
-docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_api_hardening test_ai_engine_validation test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "${PWD}:/workspace:ro" -w /workspace web python -m unittest -v test_api_hardening test_ai_engine_validation test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation test_upload_protection test_rate_limit_config
 ~~~
 
 En macOS/Linux:
 
 ~~~sh
-docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_api_hardening test_ai_engine_validation test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation
+docker compose run --rm --no-deps -v "$PWD:/workspace:ro" -w /workspace web python -m unittest -v test_api_hardening test_ai_engine_validation test_sanitization_regression test_feedback_response test_privacy test_mvp_acceptance test_csv_import test_alerts test_email_service test_model_evaluation test_upload_protection test_rate_limit_config
 ~~~
 
 Para ejecutar solo privacidad, conserva el mismo comando y deja `test_sanitization_regression test_privacy` después de `-v`. Estas suites cubren nombres tras cargos, conservación del contexto, correos Unicode, teléfonos con separadores, RFC, CURP, etiquetas existentes, doble sanitización y aplicación antes de guardar o analizar, además de salidas generadas por IA y supresión de distribuciones pequeñas. La detección sigue siendo heurística: no garantiza reconocer cualquier nombre o identificador. Los registros históricos no se modifican automáticamente con una corrección del sanitizador. También puedes ejecutar `python -m unittest -v ...` directamente desde la raíz en un entorno local con Python 3.12 y las dependencias del backend instaladas y configuradas; no ejecutes ese comando dentro de la imagen sin montar los archivos.
 
-Si utilizas el proyecto de demo, agrega `-p plurione-demo` después de `docker compose` en estos comandos. `npm run lint` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados. Registra los resultados de una nueva ejecución sobre la versión que vas a presentar; las bitácoras anteriores fueron retiradas.
+Si utilizas el proyecto de demo, agrega `-p plurione-demo` después de `docker compose` en estos comandos. `npm run lint`, `npm test` y `npm run build` se ejecutan desde `frontend/`. Las pruebas unitarias usan datos de prueba y dobles; no sustituyen la evaluación del modelo con comentarios etiquetados. Registra los resultados de una nueva ejecución sobre la versión que vas a presentar; los informes históricos identifican el código que se probó en su fecha.
+
+`test_rate_limit_config` comprueba el modo en memoria y que una URL Redis se pueda inicializar con el cliente instalado, sin necesitar un servidor. Su prueba de contadores compartidos se omite salvo que configures `TEST_REDIS_URL` con la URL de un Redis de pruebas. Esa prueba usa una clave aleatoria propia y elimina únicamente ese contador.
 
 El motor exige de 3 a 5 frases clave únicas en la respuesta original de IA. Después de sanitizar pueden quedar menos: se devuelven solo las frases seguras, sin relleno artificial, y se registra `metadata_ai.key_phrases_suppressed`. Las colisiones se comparan sin distinguir mayúsculas y normalizando espacios. Una frase ambigua se omite; una explicación de riesgo que no puede sanitizarse conserva el comportamiento de análisis no disponible.
 
@@ -284,7 +304,7 @@ El script exige 200 casos por defecto, pausa un segundo entre comentarios y escr
 
 La [evaluación del 11 de noviembre de 2026](documentos/evaluacion_modelo_2026-11-11.md), con el commit `a9b1cd52a986ba4bd57a3601098fd15e29dac262` y Azure real, obtuvo **87% de accuracy (174/200), 100% de recall de banderas rojas (24/24), 100% de cobertura y p95 de 2.1595 s**. Se conservan el [JSON por caso](documentos/evaluacion_modelo_20261111_180516Z.json) y la [salida de ejecución](documentos/evaluacion_modelo_20261111_180516Z.log). Hubo 26 errores de polaridad y tres falsos positivos de riesgo respecto a las etiquetas actuales. Una solicitud tardó 3.6086 s; p95 <3 s no significa que todas cumplan ese tiempo. El informe documenta el idioma inglés implícito del SDK, falsos positivos de sanitización y los límites del conjunto etiquetado.
 
-Los informes históricos anteriores fueron retirados. Para futuras versiones, repite el procedimiento y conserva una salida con nombre nuevo: estos resultados corresponden únicamente al código y al conjunto identificados en el informe.
+Para futuras versiones, repite el procedimiento y conserva una salida con nombre nuevo: los resultados históricos corresponden únicamente al código y al conjunto identificados en cada informe.
 
 ### Archivo de prueba funcional
 
@@ -294,7 +314,7 @@ Para el recorrido funcional puedes utilizar `documentos/comentarios_sinteticos_2
 
 #### Ensayo desde cero
 
-Las bitácoras e informes anteriores fueron retirados. Realiza este recorrido con los archivos actuales y guarda una nueva bitácora únicamente después de ejecutar las pruebas, en `documentos/ensayo_demo_<fecha>.md`. Registra lo que realmente ocurra, incluidos fallos o pasos no comprobados.
+Realiza este recorrido con los archivos actuales y guarda una nueva bitácora únicamente después de ejecutar las pruebas, en `documentos/ensayo_demo_<fecha>.md`. Los informes históricos conservados no sustituyen esa ejecución. Registra lo que realmente ocurra, incluidos fallos o pasos no comprobados.
 
 La [bitácora del 11 de noviembre de 2026](documentos/ensayo_demo_2026-11-11.md) documenta el ensayo del commit `a9b1cd52a986ba4bd57a3601098fd15e29dac262`: cinco envíos del caso de nombre después del cargo con ocultación correcta, verificaciones técnicas, métricas y alerta atendida. Conserva las evidencias, una observación sobre la claridad del motivo de alerta y los pasos pendientes de confirmación.
 
@@ -397,7 +417,7 @@ docker compose up -d
 - **No llega el correo:** confirma host, puerto, usuario, contraseña SMTP y destinatario; revisa los logs. El sistema no reintenta automáticamente ni guarda el estado de entrega del correo.
 - **No aparece una métrica:** confirma que haya al menos cinco análisis válidos en el rango filtrado; la IA debe haber producido polaridad, no basta con que el comentario esté guardado.
 
-## Informes de revisión actuales
+## Informes de revisión históricos
 
 Los seis tipos de registros históricos se conservan en estas versiones del **11 de noviembre de 2026**, asociadas al commit `a9b1cd52a986ba4bd57a3601098fd15e29dac262`:
 
@@ -410,7 +430,7 @@ Los seis tipos de registros históricos se conservan en estas versiones del **11
 | Bitácora de demo con evidencia manual y ampliación automatizada | [ensayo_demo_2026-11-11.md](documentos/ensayo_demo_2026-11-11.md) |
 | Análisis de errores del modelo | [analisis_errores_modelo_20261111.md](documentos/analisis_errores_modelo_20261111.md) |
 
-La repetición obtuvo **55 pruebas unitarias y 76 comprobaciones integradas correctas**, además de un recorrido de navegador con los cuatro roles, persistencia de alerta, resumen CSV, actualización automática del panel y aviso 429. Las comprobaciones adversas también encontraron fallos; consulta la auditoría para conocerlos. Se reutiliza la evaluación real de 200 casos del mismo día y código, documentada en el [informe del modelo](documentos/evaluacion_modelo_2026-11-11.md); no representa una segunda corrida. Las capturas y registros nuevos se conservan en `documentos/evidencias_revision_2026-11-11/`.
+La repetición obtuvo **55 pruebas unitarias y 76 comprobaciones integradas correctas**, además de un recorrido de navegador con los cuatro roles, persistencia de alerta, resumen CSV, actualización automática del panel y aviso 429. Las comprobaciones adversas también encontraron fallos; consulta la auditoría para conocerlos. Se reutiliza la evaluación real de 200 casos del mismo día y código, documentada en el [informe del modelo](documentos/evaluacion_modelo_2026-11-11.md); no representa una segunda corrida.
 
 ## Estructura
 

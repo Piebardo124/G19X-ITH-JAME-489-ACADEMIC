@@ -1,6 +1,7 @@
 import re
 import unicodedata
 
+import regex as unicode_regex
 import spacy
 
 try:
@@ -17,14 +18,23 @@ _TECHNOLOGY = re.compile(
     re.I,
 )
 _LABEL = re.compile(r"\[(?:NOMBRE|UBICACION|CORREO|TELEFONO|NUMERO|RFC|CURP) OCULT[OA]\]")
-_EMAIL = re.compile(
-    r"(?<![\w.+-])[\w.+-]+[ \t]*(?:@|\[arroba\]|\(arroba\))[ \t]*[\w-]+"
-    r"(?:\.[\w-]+|[ \t]+\.[ \t]+[\w-]+|[ \t]*\[punto\][ \t]*[\w-]+)+(?![\w-])", re.I
+# Los espacios horizontales Unicode también se usan para disfrazar correos.
+# Sólo la primera separación de dominio acepta espacio después del punto:
+# tras un correo completo, «. Pedido ...» pertenece a la siguiente frase.
+_HSPACE = r"[^\S\r\n]"
+_EMAIL_LOCAL_CHARS = r"\w.!#$%&'*+/=?^`{|}~\-"
+_EMAIL = unicode_regex.compile(
+    rf'(?<![{_EMAIL_LOCAL_CHARS}])(?:[{_EMAIL_LOCAL_CHARS}]+|"(?:[^"\\\r\n]|\\.)+")'
+    rf"{_HSPACE}*(?:@|\[arroba\]|\(arroba\)){_HSPACE}*[\w-]+"
+    rf"{_HSPACE}*(?:\.|\[punto\]){_HSPACE}*[\w-]+"
+    rf"(?:\.[\w-]+|{_HSPACE}*\[punto\]{_HSPACE}*[\w-]+)*(?![\w-])", re.I
 )
 _PHONE = re.compile(
-    r"(?<!\w)(?:\+?(?:52|1)[ \t.-]?)?(?:\(\d{2,3}\)|\d{2,3})"
-    r"[ \t.-]?\d{3,4}[ \t.-]?\d{4}(?!\w)"
+    r"(?<!\w)(?:\+?(?:52|1)[\s./-]*)?(?:"
+    r"(?:\(\d{2,3}\)|\d{2,3})[\s./-]*\d{3,4}[\s./-]*\d{4}"
+    r"|(?:\d{2}[\s./-]+){4}\d{2})(?!\w)"
 )
+_UNICODE_DASH = unicode_regex.compile(r"\p{Dash}\Z")
 _RFC = re.compile(
     r"(?<!\w)(?P<base>[A-Za-zÑñ&]{3,4}[ \t]?\d{6})"
     # Homoclave contigua: mixta. Separada: mayúsculas, sin palabras comunes.
@@ -45,6 +55,65 @@ _FOLIO = re.compile(r"(?i)\b(?:pedido|folio|orden)\s+(\d{10})\b")
 
 class SanitizationAmbiguityError(ValueError):
     """Entrada que no puede modificarse sin arriesgar pérdida de contexto."""
+
+
+def _normalize_for_detection(text):
+    """Quita controles de formato invisibles antes de calcular posiciones.
+
+    NFC conserva acentos. Los controles Cf, el combinador invisible y los
+    selectores de variación no deben separar los caracteres de un identificador.
+    No se eliminan los espacios ni los saltos de línea del relato.
+    """
+    if any(unicodedata.category(char) == "Cc" and char not in "\t\r\n" for char in text):
+        raise SanitizationAmbiguityError("El texto contiene caracteres de control no admitidos.")
+    return unicodedata.normalize("NFC", "".join(
+        char for char in text
+        if unicodedata.category(char) != "Cf"
+        and char != "\u034f"
+        and not "\ufe00" <= char <= "\ufe0f"
+        and not "\U000e0100" <= char <= "\U000e01ef"
+    ))
+
+
+def _canonical_view(text):
+    """Vista de detección NFKC con posiciones del relato, que no se reescribe.
+
+    El mapa por grafema admite expansiones como ligaduras y conserva los
+    offsets aunque la normalización cambie el número de caracteres.
+    """
+    characters, positions = [], []
+    for cluster in unicode_regex.finditer(r"\X", text):
+        for char in unicodedata.normalize("NFKC", cluster.group()):
+            if char.isdecimal():
+                char = str(unicodedata.decimal(char))
+            elif _UNICODE_DASH.fullmatch(char):
+                char = "-"
+            elif char == "\u3002":
+                # Separador de etiquetas IDNA; FF0E/FF61 llegan aquí por NFKC.
+                char = "."
+            elif unicodedata.name(char, "") in {"FRACTION SLASH", "DIVISION SLASH", "REVERSE SOLIDUS"}:
+                char = "/"
+            characters.append(char)
+            positions.append((cluster.start(), cluster.end()))
+    return "".join(characters), positions
+
+
+def _project_span(start, end, positions):
+    return positions[start][0], positions[end - 1][1]
+
+
+def _without_labels(text):
+    characters, positions = [], []
+    start = 0
+    for label in _LABEL.finditer(text):
+        for index in range(start, label.start()):
+            characters.append(text[index])
+            positions.append((index, index + 1))
+        start = label.end()
+    for index in range(start, len(text)):
+        characters.append(text[index])
+        positions.append((index, index + 1))
+    return "".join(characters), positions
 
 
 def _contextual_names(doc, text):
@@ -111,13 +180,8 @@ def _visible_fragments(start, end, excluded, text):
             yield first, last
 
 
-def sanitize_text(text: str) -> str:
-    """Reduce PII conocida; los nombres se detectan por heurísticas, sin garantía de anonimato."""
-    if not text:
-        return ""
-    text = unicodedata.normalize("NFC", text)
-    # Posiciones siempre sobre el mismo original. Los espacios conservan
-    # offsets y evitan que spaCy reinterprete etiquetas o identificadores.
+def _detected_spans(text, include_names=True):
+    """Detecta sobre una vista canónica; sus offsets aún no son los del relato."""
     protected = [(match.start(), match.end()) for match in _LABEL.finditer(text)]
     spans = []
     for pattern, label in (
@@ -145,6 +209,8 @@ def sanitize_text(text: str) -> str:
                 ):
                     match_label = "[NUMERO OCULTO]"
                 spans.append((match.start(), end, match_label, 100))
+    if not include_names:
+        return spans
     masked = list(text)
     technology = [(match.start(), match.end()) for match in _TECHNOLOGY.finditer(text)]
     # Una tecnología usada explícitamente como nombre tras un cargo no queda
@@ -176,9 +242,64 @@ def sanitize_text(text: str) -> str:
         words = {token.casefold() for token in re.findall(r"[\w.]+", entity.text)}
         if words and words.issubset(_KNOWN_NON_PERSON_ENTITIES):
             continue
+        if entity.label_ == "PER" and all(
+            token.pos_ in {"DET", "PRON"}
+            and set(token.morph.get("PronType")) & {"Int", "Rel", "Exc"}
+            for token in entity
+        ):
+            # Una palabra con función interrogativa/exclamativa (p. ej. «Qué»)
+            # no se convierte en nombre sólo por el error de la etiqueta NER.
+            continue
         if entity.label_ in {"PER", "LOC"}:
             label = "[NOMBRE OCULTO]" if entity.label_ == "PER" else "[UBICACION OCULTA]"
             spans.append((entity.start_char, entity.end_char, label, 50))
+    return spans
+
+
+def sanitize_text(text: str) -> str:
+    """Reduce PII conocida; los nombres se detectan por heurísticas, sin garantía de anonimato."""
+    if not text:
+        return ""
+    if "\x00" in text:
+        raise SanitizationAmbiguityError("El texto contiene un carácter nulo no permitido.")
+    text = _normalize_for_detection(text)
+    canonical, positions = _canonical_view(text)
+    if not canonical:
+        return text
+
+    labels = list(_LABEL.finditer(canonical))
+    protected = [_project_span(label.start(), label.end(), positions) for label in labels]
+    spans = [
+        (*_project_span(start, end, positions), label, priority)
+        for start, end, label, priority in _detected_spans(canonical)
+    ]
+
+    if labels:
+        # Las etiquetas legítimas permanecen protegidas. Si se intercalan para
+        # dividir un identificador, detectarlo sin ellas permite ocultarlo entero.
+        joined, joined_positions = _without_labels(canonical)
+        split_words = [
+            label for label in labels
+            if label.start() and label.end() < len(canonical)
+            and unicode_regex.fullmatch(r"[\p{L}\p{M}]", canonical[label.start() - 1])
+            and unicode_regex.fullmatch(r"[\p{L}\p{M}]", canonical[label.end()])
+        ]
+        for start, end, label, _priority in _detected_spans(joined, include_names=bool(split_words)):
+            left, right = _project_span(start, end, joined_positions)
+            crossed = [item for item in labels if left < item.start() and right > item.end()]
+            if not crossed:
+                continue
+            if label in {"[NOMBRE OCULTO]", "[UBICACION OCULTA]"} and not any(
+                item in split_words for item in crossed
+            ):
+                continue
+            original_left, original_right = _project_span(left, right, positions)
+            protected = [
+                (first, last) for first, last in protected
+                if not (original_left <= first and original_right >= last)
+            ]
+            spans.append((original_left, original_right, label, 120))
+
     # Los identificadores y nombres contextuales ganan a entidades amplias.
     accepted = []
     for start, end, label, priority in sorted(spans, key=lambda item: (-item[3], -(item[1] - item[0]), item[0])):

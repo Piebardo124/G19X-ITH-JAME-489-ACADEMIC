@@ -193,11 +193,9 @@ El 11 de noviembre, entre las 10:20 y 10:29 de America/Los_Angeles, Codex ejecut
 | Navegador: admin, hr, analyst y executive | Inicio/cierre de sesión comprobados; métricas para todos; bandeja y CSV visibles para admin/hr/analyst y ausentes para executive |
 | Permisos API | 403 de executive para alertas y CSV, confirmados en integración |
 | Alerta de QA #2 | Cambiada a Atendida desde la interfaz y conservada al recargar; es otra alerta distinta de la #12 del ensayo manual |
-| CSV de interfaz | `evidencias_revision_2026-11-11/csv_interfaz_actual.csv`: 1 procesada, 1 omitida y 0 fallidas |
+| CSV de interfaz | Una carga con 1 fila procesada, 1 omitida y 0 fallidas |
 | Actualización del panel | RH/noviembre pasó de **7 a 8 análisis sin recargar** al terminar el CSV; promedio +0.73 |
 | Aviso de límite | Seis intentos inválidos de login; aviso de espera visible y 429 en el log de la API QA |
 | Limpieza | Dos contenedores y base temporales retirados; demo original activa y sin cambios en sus conteos durante las comprobaciones adversas |
 
-![Panel de QA actualizado tras CSV, con ocho análisis y resumen final](evidencias_revision_2026-11-11/hr_csv_qa.png)
-
-El [informe funcional nuevo](pruebas_sistema_2026-11-11.md) enlaza capturas y logs de cada recorrido. La [evaluación completa](evaluacion_completa_2026-11-11.md) registra los problemas encontrados fuera del caso del nombre: evasión con separadores invisibles, ocultación de expresiones comunes, NUL que produce 500 y riesgos de arquitectura. No se verificó entrega SMTP real ni se resolvió mediante esta prueba el motivo original de la alerta #12.
+El [informe funcional nuevo](pruebas_sistema_2026-11-11.md) describe cada recorrido. La [evaluación completa](evaluacion_completa_2026-11-11.md) registra los problemas encontrados fuera del caso del nombre: evasión con separadores invisibles, ocultación de expresiones comunes, NUL que produce 500 y riesgos de arquitectura. No se verificó entrega SMTP real ni se resolvió mediante esta prueba el motivo original de la alerta #12.

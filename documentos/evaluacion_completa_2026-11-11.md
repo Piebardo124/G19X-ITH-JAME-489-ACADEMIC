@@ -5,9 +5,9 @@ Commit: `a9b1cd52a986ba4bd57a3601098fd15e29dac262`. Evaluación realizada por Co
 ## Evidencias y resultado general
 
 - **55 pruebas unitarias correctas y 76 comprobaciones integradas correctas**, con PostgreSQL real y ocho análisis sintéticos reales en integración. [Informe funcional](pruebas_sistema_2026-11-11.md), [log integrado](qa_sistema_20261111.log).
-- Recorrido de navegador con cuatro roles, persistencia de estado de alerta, CSV y actualización de métricas **7 → 8 sin recargar**; aviso 429 visible. Capturas y logs en [evidencias de esta revisión](evidencias_revision_2026-11-11/csv_panel_ax.txt).
+- Recorrido de navegador con cuatro roles, persistencia de estado de alerta, CSV y actualización de métricas **7 → 8 sin recargar**; aviso 429 visible.
 - Evaluación vigente del mismo código: **87% de accuracy, 100% de recall, 100% de cobertura y p95 2.1595 s**, con 200 casos. [Informe y JSON](evaluacion_modelo_2026-11-11.md). Se reutiliza esa corrida del mismo día; no se inventa una segunda evaluación.
-- Los casos adversos adicionales reprodujeron evasión con caracteres invisibles, ocultaciones incorrectas, HTTP 500 con NUL, credenciales de base excesivamente privilegiadas y deducción temporal de un valor agregado. [Resultados](evidencias_revision_2026-11-11/comprobaciones_adversas.json), [script](evidencias_revision_2026-11-11/comprobaciones_adversas.py).
+- Los casos adversos adicionales reprodujeron evasión con caracteres invisibles, ocultaciones incorrectas, HTTP 500 con NUL, credenciales de base excesivamente privilegiadas y deducción temporal de un valor agregado.
 - npm audit: **cinco nodos afectados por avisos —uno alto y cuatro moderados—**, correspondientes a dos avisos raíz. Producción conserva un aviso alto transitivo. Esto no demuestra por sí solo explotación del navegador de PluriOne.
 
 Las 76 comprobaciones originales no incluían todos los casos adversos nuevos. Por ello, sus resultados correctos son compatibles con los fallos que se describen a continuación. La prioridad se asigna según impacto y condiciones de explotación; un riesgo de arquitectura se distingue de un fallo reproducido.

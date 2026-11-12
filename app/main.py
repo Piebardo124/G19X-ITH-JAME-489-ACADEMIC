@@ -13,6 +13,7 @@ from app.db.database import engine, SessionLocal
 from app.db import models
 from app.db.models import Department
 from app.core.rate_limit import limiter
+from app.core.upload_protection import CSVUploadProtectionMiddleware
 
 logger = logging.getLogger(__name__)
 DEFAULT_DEPARTMENTS = [
@@ -94,6 +95,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(CSVUploadProtectionMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

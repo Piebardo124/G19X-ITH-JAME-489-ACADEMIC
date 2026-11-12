@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 
-export default function CargaCsv({ manejarSubidaCsv, archivoCsv, setArchivoCsv, subiendoCsv, mensajeCsv }) {
+export default function CargaCsv({ manejarSubidaCsv, archivoCsv, setArchivoCsv, subiendoCsv, importacionActiva, mensajeCsv, tipoMensajeCsv, reintentarConsulta }) {
     const inputArchivoRef = useRef(null);
+    const ocupada = subiendoCsv || importacionActiva;
 
     useEffect(() => {
         if (!archivoCsv && inputArchivoRef.current) {
@@ -17,32 +18,38 @@ export default function CargaCsv({ manejarSubidaCsv, archivoCsv, setArchivoCsv, 
                     ref={inputArchivoRef}
                     type="file"
                     accept=".csv"
+                    disabled={ocupada}
                     onChange={(e) => setArchivoCsv(e.target.files[0])}
                     style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '5px', backgroundColor: '#ffffff', cursor: 'pointer' }}
                 />
                 <button
                     type="submit"
-                    disabled={subiendoCsv || !archivoCsv}
+                    disabled={ocupada || !archivoCsv}
                     style={{
                         padding: '10px 15px',
-                        backgroundColor: subiendoCsv ? '#94a3b8' : '#10b981',
+                        backgroundColor: ocupada ? '#94a3b8' : '#10b981',
                         color: 'white', border: 'none', borderRadius: '5px',
-                        cursor: subiendoCsv || !archivoCsv ? 'not-allowed' : 'pointer',
+                        cursor: ocupada || !archivoCsv ? 'not-allowed' : 'pointer',
                         fontWeight: 'bold'
                     }}
                 >
-                    {subiendoCsv ? 'Enviando al Motor IA...' : 'Procesar CSV en Segundo Plano'}
+                    {subiendoCsv ? 'Enviando archivo...' : importacionActiva ? 'Importación en curso...' : 'Procesar CSV en Segundo Plano'}
                 </button>
             </form>
             {mensajeCsv && (
-                <p style={{
+                <p role="status" aria-live="polite" style={{
                     marginTop: '15px',
                     marginBottom: '0',
                     fontWeight: '500',
-                    color: mensajeCsv.startsWith('Carga completada:') ? '#059669' : mensajeCsv.startsWith('Carga terminada con observaciones:') ? '#b45309' : '#dc2626'
+                    color: ({ success: '#059669', warning: '#b45309', error: '#dc2626', progress: '#334155' })[tipoMensajeCsv] || '#334155'
                 }}>
                 {mensajeCsv}
             </p>
+        )}
+        {reintentarConsulta && (
+            <button type="button" onClick={reintentarConsulta} style={{ marginTop: '12px', padding: '8px 12px' }}>
+                Volver a consultar
+            </button>
         )}
         </div>
     );

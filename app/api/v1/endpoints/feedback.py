@@ -9,6 +9,7 @@ from app.services.sanitization import sanitize_text, SanitizationAmbiguityError
 from app.services.ai_engine import analyze_sentiment_with_ai
 from app.core.security import require_roles
 from app.core.rate_limit import limiter, FEEDBACK_RATE_LIMIT, CSV_UPLOAD_RATE_LIMIT
+from app.core.upload_protection import MAX_CSV_UPLOAD_BYTES
 from app.services.email_service import send_alert_email
 from app.db.models import Department
 from datetime import date, datetime, time, timedelta, timezone
@@ -20,12 +21,44 @@ import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 MAX_CSV_ERROR_DETAILS = 100
 MAX_CSV_ROWS = 1000
 
 class CSVRowValidationError(ValueError):
     """Error de validación seguro para mostrar al usuario en el resumen CSV."""
+
+
+class CSVStructureError(ValueError):
+    """Error del archivo completo, sin incluir contenido de los comentarios."""
+
+
+def _validate_csv_structure(file_content: str) -> tuple[list[dict[str, str]], bool]:
+    """Revisa todo el archivo y conserva únicamente las filas que se importarán."""
+    try:
+        reader = csv.reader(io.StringIO(file_content, newline=""), strict=True)
+        headers = next(reader, None)
+        if not headers or "text_content" not in headers:
+            raise CSVStructureError("El CSV debe incluir la columna text_content.")
+        if len(headers) != len(set(headers)):
+            raise CSVStructureError("El CSV contiene encabezados duplicados.")
+
+        rows = []
+        row_count = 0
+        for cells in reader:
+            # DictReader omite las líneas vacías; conservar ese comportamiento.
+            if not cells:
+                continue
+            if len(cells) != len(headers):
+                raise CSVStructureError(
+                    "La cantidad de celdas no coincide con los encabezados."
+                )
+            row_count += 1
+            if row_count <= MAX_CSV_ROWS:
+                rows.append(dict(zip(headers, cells)))
+        return rows, row_count > MAX_CSV_ROWS
+    except csv.Error:
+        raise CSVStructureError("El CSV contiene campos inválidos o demasiado grandes.") from None
+
 
 def _validate_csv_row(row: dict, department_ids: set[int]):
     """Valida los campos admitidos y devuelve el texto y departamento normalizados."""
@@ -37,7 +70,9 @@ def _validate_csv_row(row: dict, department_ids: set[int]):
     try:
         texto = FeedbackCreate(text_content=texto).text_content
     except ValueError:
-        raise CSVRowValidationError("El comentario debe incluir una palabra con al menos dos letras.")
+        raise CSVRowValidationError(
+            "El comentario contiene caracteres no admitidos o no incluye una palabra con al menos dos letras."
+        )
 
     raw_anonymous = str(row.get("is_anonymous", "true")).strip().casefold()
     if raw_anonymous not in {"true", "1", "yes", "si", "sí"}:
@@ -178,24 +213,40 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
         else:
             omitted_error_details += 1
 
+    def set_progress(job, job_status=None, finished=False):
+        for key, value in totals.items():
+            setattr(job, key, value)
+        visible_errors = list(errors)
+        if omitted_error_details:
+            visible_errors.append(
+                f"Se omitieron {omitted_error_details} detalles adicionales."
+            )
+        job.error_summary = "\n".join(visible_errors) or None
+        if job_status is not None:
+            job.status = job_status
+        if finished:
+            job.finished_at = datetime.now(timezone.utc)
+
     try:
         job = db.query(CSVImport).filter(CSVImport.id == import_id).first()
         if not job:
             return
+        rows, truncated = _validate_csv_structure(file_content)
         job.status = "PROCESSING"
         db.commit()
 
-        reader = csv.DictReader(io.StringIO(file_content), strict=True)
         department_ids = {department.id for department in db.query(Department).all()}
-        for index, row in enumerate(reader, start=1):
-            if totals["total_rows"] >= MAX_CSV_ROWS:
-                record_error(f"Se alcanzo el limite de {MAX_CSV_ROWS} filas.")
-                break
+        for index, row in enumerate(rows, start=1):
             totals["total_rows"] += 1
+            row_totals = dict(totals)
+            previous_error_count = len(errors)
+            previous_omitted_details = omitted_error_details
             try:
                 validated_row = _validate_csv_row(row, department_ids)
                 if validated_row is None:
                     totals["skipped_rows"] += 1
+                    set_progress(job)
+                    db.commit()
                     continue
                 texto, dep_id = validated_row
                 is_anon = True
@@ -230,18 +281,19 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                     )
                     db.add(alert)
 
-                db.commit()
                 analysis_unavailable = (
                     ai_results["sentiment_label"] == "NO_DISPONIBLE"
                     or ai_results["metadata_ai"].get("is_simulation", False)
                 )
-                # El comentario ya quedó guardado. Un fallo de IA es una
-                # observación, pero no un fallo de importación del registro.
+                # Confirmar el comentario y su contador en la misma transacción
+                # permite consultar el progreso, incluso si el proceso termina.
                 totals["processed_rows"] += 1
                 if analysis_unavailable:
                     record_error(
                         f"Fila {index}: comentario guardado; análisis de IA pendiente."
                     )
+                set_progress(job)
+                db.commit()
                 if ai_results["metadata_ai"].get("risk_burnout", False):
                     try:
                         send_alert_email(alert_id=alert.id, reason=alert.reason)
@@ -253,53 +305,50 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                             index,
                             type(email_error).__name__,
                         )
-            except (CSVRowValidationError, SanitizationAmbiguityError) as row_error:
-                db.rollback()
-                totals["failed_rows"] += 1
-                record_error(f"Fila {index}: {row_error}")
             except Exception as row_error:
                 db.rollback()
+                totals.update(row_totals)
+                del errors[previous_error_count:]
+                omitted_error_details = previous_omitted_details
                 totals["failed_rows"] += 1
-                logger.exception(
-                    "Error al procesar fila %s del CSV (tipo=%s).",
-                    index,
-                    type(row_error).__name__,
-                )
-                record_error(
-                    f"Fila {index}: error interno al procesar el registro ({type(row_error).__name__})."
-                )
+                if isinstance(row_error, (CSVRowValidationError, SanitizationAmbiguityError)):
+                    record_error(f"Fila {index}: {row_error}")
+                else:
+                    logger.error(
+                        "Error al procesar fila %s del CSV (tipo=%s).",
+                        index,
+                        type(row_error).__name__,
+                    )
+                    record_error(
+                        f"Fila {index}: error interno al procesar el registro ({type(row_error).__name__})."
+                    )
+                set_progress(job)
+                db.commit()
 
+        if truncated:
+            record_error(f"Se alcanzo el limite de {MAX_CSV_ROWS} filas.")
         job = db.query(CSVImport).filter(CSVImport.id == import_id).first()
         if job:
-            for key, value in totals.items():
-                setattr(job, key, value)
-            visible_errors = list(errors)
-            if omitted_error_details:
-                visible_errors.append(
-                    f"Se omitieron {omitted_error_details} detalles adicionales."
-                )
-            job.error_summary = "\n".join(visible_errors) or None
-            job.status = (
+            final_status = (
                 "COMPLETED_WITH_WARNINGS"
                 if totals["skipped_rows"] or totals["failed_rows"] or errors
                 else "COMPLETED"
             )
-            job.finished_at = datetime.now(timezone.utc)
+            set_progress(job, final_status, finished=True)
             db.commit()
     except Exception as error:
         db.rollback()
         job = db.query(CSVImport).filter(CSVImport.id == import_id).first()
         if job:
-            job.status = "FAILED"
-            job.error_summary = f"Error general: {type(error).__name__}"
-            job.finished_at = datetime.now(timezone.utc)
+            record_error(f"Error general: {type(error).__name__}")
+            set_progress(job, "FAILED", finished=True)
             db.commit()
     finally:
         db.close()
 
 @router.post("/upload-csv", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit(CSV_UPLOAD_RATE_LIMIT)
-async def upload_feeback_csv(
+def upload_feeback_csv(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -308,20 +357,18 @@ async def upload_feeback_csv(
 ):
     """Valida una carga CSV autorizada y la deja en cola para procesarla."""
     filename = file.filename or ""
+    if "\x00" in filename:
+        raise HTTPException(status_code=400, detail="El nombre del archivo contiene caracteres no admitidos.")
     if not filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="El archivo debe ser de tipo CSV.")
 
     try:
-        content = await file.read(MAX_CSV_UPLOAD_BYTES + 1)
+        content = file.file.read(MAX_CSV_UPLOAD_BYTES + 1)
         if len(content) > MAX_CSV_UPLOAD_BYTES:
             raise HTTPException(status_code=413, detail="El CSV excede el límite de 5 MB.")
         decoded_content = content.decode("utf-8-sig")
 
-        headers = next(csv.reader(io.StringIO(decoded_content), strict=True), None)
-        if not headers or "text_content" not in headers:
-            raise HTTPException(status_code=400, detail="El CSV debe incluir la columna text_content.")
-        if len(headers) != len(set(headers)):
-            raise HTTPException(status_code=400, detail="El CSV contiene encabezados duplicados.")
+        _validate_csv_structure(decoded_content)
 
         import_job = CSVImport(filename=filename[:255], status="QUEUED")
         db.add(import_job)
@@ -340,8 +387,8 @@ async def upload_feeback_csv(
         raise
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="El archivo CSV debe estar codificado en UTF-8.")
-    except csv.Error:
-        raise HTTPException(status_code=400, detail="El CSV contiene campos inválidos o demasiado grandes.")
+    except CSVStructureError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
 
 @router.get("/upload-csv/{import_id}")
 def get_csv_import_status(

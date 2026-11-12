@@ -160,6 +160,66 @@ class PrivacyTests(unittest.TestCase):
         self.assertTrue(suppressed)
         self.assertEqual(distribution, {})
 
+    def test_ai_generated_obfuscated_identifiers_are_sanitized(self):
+        generated = AIQualitativeResult(
+            emotions_detected=["Estrés/Burnout"],
+            organizational_axes=["Carga de trabajo"],
+            risk_burnout=True,
+            red_flag_reason=("Contactar a persona＠ejemplo．com o al 662\u2011123\u20114567. "
+                             "El teléfono adicional es 662[TELEFONO OCULTO]123[TELEFONO OCULTO]4567."),
+            key_phrases=["teléfono 55 12 34 56 78", "Correo persona\u200b@ejemplo. com", "carga excesiva",
+                         "contacto 662/123/4567"],
+        )
+        with patch.dict(os.environ, {
+            "AZURE_OPENAI_API_KEY": "test-key", "AZURE_OPENAI_ENDPOINT": "https://example.test/",
+            "AZURE_LANGUAGE_KEY": "test-key", "AZURE_LANGUAGE_ENDPOINT": "https://example.test/",
+        }), patch("app.services.ai_engine.TextAnalyticsClient") as azure, \
+             patch("app.services.ai_engine.ChatOpenAI", _FakeLLM), \
+             patch.object(_FakeLLM, "result", generated), \
+             patch("app.services.ai_engine.ChatPromptTemplate.from_messages", return_value=_FakePrompt()):
+            azure.return_value.analyze_sentiment.return_value = [SimpleNamespace(
+                is_error=False, sentiment="negative",
+                confidence_scores=SimpleNamespace(positive=0.01, negative=0.9),
+            )]
+            result = analyze_sentiment_with_ai("Comentario previamente sanitizado")
+
+        self.assertEqual(result["sentiment_label"], "Negativo")
+        self.assertEqual(result["key_phrases"],
+                         ["teléfono [TELEFONO OCULTO]", "Correo [CORREO OCULTO]", "carga excesiva",
+                          "contacto [TELEFONO OCULTO]"])
+        self.assertEqual(result["metadata_ai"]["red_flag_reason"],
+                         "Contactar a [CORREO OCULTO] o al [TELEFONO OCULTO]. "
+                         "El teléfono adicional es [TELEFONO OCULTO].")
+
+    def test_ai_generated_null_is_never_returned_in_phrases_or_risk_reason(self):
+        for reason, expect_available in (("Agotamiento persistente.", True),
+                                         ("Agotamiento\x00 persistente.", False),
+                                         ("Agotamiento\x01 persistente.", False)):
+            with self.subTest(reason=repr(reason)):
+                generated = AIQualitativeResult(
+                    emotions_detected=["Estrés/Burnout"], organizational_axes=["Carga de trabajo"],
+                    risk_burnout=True, red_flag_reason=reason,
+                    key_phrases=["carga\x00 excesiva", "agotamiento", "falta de descanso"],
+                )
+                with patch.dict(os.environ, {
+                    "AZURE_OPENAI_API_KEY": "test-key", "AZURE_OPENAI_ENDPOINT": "https://example.test/",
+                    "AZURE_LANGUAGE_KEY": "test-key", "AZURE_LANGUAGE_ENDPOINT": "https://example.test/",
+                }), patch("app.services.ai_engine.TextAnalyticsClient") as azure, \
+                     patch("app.services.ai_engine.ChatOpenAI", _FakeLLM), \
+                     patch.object(_FakeLLM, "result", generated), \
+                     patch("app.services.ai_engine.ChatPromptTemplate.from_messages", return_value=_FakePrompt()):
+                    azure.return_value.analyze_sentiment.return_value = [SimpleNamespace(
+                        is_error=False, sentiment="negative",
+                        confidence_scores=SimpleNamespace(positive=0.01, negative=0.9),
+                    )]
+                    result = analyze_sentiment_with_ai("Comentario previamente sanitizado")
+                self.assertEqual(result["sentiment_label"] != "NO_DISPONIBLE", expect_available)
+                self.assertNotIn("\x00", " ".join(result["key_phrases"]))
+                self.assertNotIn("\x00", result["metadata_ai"]["red_flag_reason"])
+                if expect_available:
+                    self.assertEqual(result["key_phrases"], ["agotamiento", "falta de descanso"])
+                    self.assertTrue(result["metadata_ai"]["key_phrases_suppressed"])
+
     def test_distribution_is_returned_when_every_category_meets_k(self):
         source = {"Positivo": 8, "Negativo": 5, "Neutral": 7}
         distribution, suppressed = _safe_sentiment_distribution(source)

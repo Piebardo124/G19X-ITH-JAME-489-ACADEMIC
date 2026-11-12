@@ -11,6 +11,8 @@ class FeedbackCreate(BaseModel):
     @classmethod
     def trim_and_validate_text(cls, value):
         if isinstance(value, str):
+            if "\x00" in value:
+                raise ValueError("El comentario contiene un carácter nulo no permitido.")
             value = value.strip()
             if not re.search(r"[^\W\d_]{2,}", value):
                 raise ValueError("El comentario debe incluir al menos una palabra con dos letras.")
