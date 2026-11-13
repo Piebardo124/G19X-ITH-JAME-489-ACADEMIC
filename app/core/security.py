@@ -19,7 +19,7 @@ ACCESS_TOKEN_EXPIRE_HOURS = 8
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def create_access_token(data: dict):
-    """Crea un token de acceso con los datos del usuario y su expiración."""
+    """Crea el acceso temporal del usuario."""
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     to_encode.update({"exp": expire})
@@ -27,7 +27,7 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 def verify_token(token: str = Depends(oauth2_schema), db: Session = Depends(get_db)):
-    """Valida el token y devuelve la identidad y el rol incluidos en él."""
+    """Comprueba el acceso y los permisos del usuario."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudieron validar las credenciales",

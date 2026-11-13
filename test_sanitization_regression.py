@@ -1,4 +1,4 @@
-"""Regresiones de privacidad con el modelo real; sin red ni escritura en BD."""
+"""Pruebas de ocultación de datos personales."""
 import unittest
 import unicodedata
 from unittest.mock import MagicMock, patch

@@ -1,4 +1,4 @@
-"""Contrato HTTP para distinguir guardado con análisis y sin análisis, sin Azure ni BD."""
+"""Pruebas de las respuestas del buzón."""
 import unittest
 from unittest.mock import MagicMock, patch
 

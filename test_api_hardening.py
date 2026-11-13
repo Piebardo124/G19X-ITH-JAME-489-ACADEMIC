@@ -1,4 +1,4 @@
-"""Regresiones de entradas adversas: sin PostgreSQL, Azure ni SMTP."""
+"""Pruebas de entradas no válidas."""
 import unittest
 from unittest.mock import MagicMock, patch
 

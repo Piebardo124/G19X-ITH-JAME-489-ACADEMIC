@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def _unique_phrases(values):
-    """Mismo criterio de unicidad antes y después de ocultar datos personales."""
+    """Elimina frases repetidas."""
     cleaned, seen = [], set()
     for value in values:
         phrase = " ".join(unicodedata.normalize("NFC", value).split())
@@ -57,7 +57,7 @@ class AIQualitativeResult(BaseModel):
         return self
 
 def analyze_sentiment_with_ai(text: str) -> dict:
-    """Analiza texto combinado Azure AI Language (Polaridad) y LangChain (Contexto)"""
+    """Analiza el sentimiento y el contexto del comentario."""
 
     if not all((
         os.getenv("AZURE_OPENAI_API_KEY"),
@@ -70,13 +70,12 @@ def analyze_sentiment_with_ai(text: str) -> dict:
     texto_seguro = text.replace("###", "")
 
     try:
-        # Analisis Azure AI Language
+        # Análisis del sentimiento.
         language_client = TextAnalyticsClient(
             endpoint = os.getenv("AZURE_LANGUAGE_ENDPOINT"),
             credential=AzureKeyCredential(os.getenv("AZURE_LANGUAGE_KEY"))
         )
 
-        # Obtener analisis de Microsoft.
         response = language_client.analyze_sentiment(documents=[texto_seguro])[0]
         if response.is_error:
             raise RuntimeError("Azure AI Language no pudo analizar el comentario.")
@@ -93,7 +92,7 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         if etiqueta_estricta == "NO_DISPONIBLE":
             raise ValueError("Azure devolvió una puntuación inválida.")
 
-        # Analisis Cualitativo
+        # Análisis del contexto.
 
         llm = ChatOpenAI(
             base_url=os.getenv("AZURE_OPENAI_ENDPOINT"),
@@ -116,22 +115,21 @@ def analyze_sentiment_with_ai(text: str) -> dict:
         chain = prompt | structured_llm
         llm_result = chain.invoke({"texto_empleado": texto_seguro})
 
-        # Sanitizacion de frases de salida
+        # Revisión de los resultados.
         from app.services.sanitization import sanitize_text, SanitizationAmbiguityError
         frases_seguras_raw = []
         for phrase in llm_result.key_phrases:
             try:
                 frases_seguras_raw.append(sanitize_text(phrase))
             except SanitizationAmbiguityError:
-                # Omitir la frase ambigua sin inventar contenido ni perder
-                # el análisis válido de sentimiento y riesgo.
+                # Omite frases ambiguas.
                 continue
         frases_seguras = _unique_phrases(frases_seguras_raw)
         motivo_seguro = sanitize_text(llm_result.red_flag_reason).strip() if llm_result.red_flag_reason else ""
 
         if llm_result.risk_burnout and not motivo_seguro:
             raise ValueError("La sanitizacion elimino la explicacion del riesgo.")
-        # Ensamblaje del resultado para la base de datos
+        # Resultado del análisis.
         return {
             "polarity_score": score_seguro,
             "sentiment_label": etiqueta_estricta,

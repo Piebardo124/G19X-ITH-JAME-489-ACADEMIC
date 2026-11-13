@@ -2,7 +2,7 @@ const ACTIVE_STATUSES = new Set(['QUEUED', 'PROCESSING']);
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'COMPLETED_WITH_WARNINGS', 'FAILED']);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// The subject only partitions browser state. API authorization still validates the JWT.
+// Separa el seguimiento de cada usuario.
 export function csvImportStorageKey(token) {
   try {
     const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -43,7 +43,7 @@ export function clearCsvImport(storageKey, storage) {
   try {
     (storage ?? globalThis.sessionStorage)?.removeItem(storageKey);
   } catch {
-    // Storage may be unavailable; completing an import must still update the UI.
+    // Mantiene la actualización del panel.
   }
 }
 

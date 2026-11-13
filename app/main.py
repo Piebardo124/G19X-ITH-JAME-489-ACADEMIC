@@ -60,8 +60,7 @@ def seed_departments():
 
             db.add(Department(id=department_id, name=name))
         db.flush()
-        # Los IDs de la semilla son explícitos; sincronizar la secuencia evita
-        # que el siguiente INSERT automático reutilice uno ya ocupado.
+        # Prepara la numeración de los departamentos.
         db.execute(text("""
             SELECT setval(
                 pg_get_serial_sequence('departments', 'id')::regclass,

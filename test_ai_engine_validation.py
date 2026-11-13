@@ -1,4 +1,4 @@
-"""Contrato del modelo y posprocesamiento IA; no usa servicios externos."""
+"""Pruebas de los resultados del análisis."""
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch

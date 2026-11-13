@@ -182,7 +182,7 @@ function Dashboard() {
         setMensajeCsv(result.message);
         setTipoMensajeCsv(result.type);
         setErrorConsultaCsv(false);
-        // Even FAILED may have committed rows before an unrecoverable failure.
+        // Una carga fallida puede conservar resultados parciales.
         setPaginaAlertas(1);
         setAlertRefreshKey((actual) => actual + 1);
         clearCsvImport(csvStorageKey);
@@ -310,7 +310,7 @@ function Dashboard() {
             error={error}
           />
 
-          {/* Input de CSV */}
+          {/* Carga de archivo */}
           <CargaCsv
             manejarSubidaCsv={manejarSubidaCsv}
             archivoCsv={archivoCsv}

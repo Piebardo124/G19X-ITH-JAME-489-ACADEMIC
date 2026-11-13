@@ -1,4 +1,4 @@
-"""Verifica la configuración real del limitador sin Azure, SMTP ni PostgreSQL."""
+"""Pruebas de los límites de solicitudes."""
 import os
 import runpy
 import unittest
@@ -12,8 +12,7 @@ from limits.strategies import FixedWindowRateLimiter
 
 
 def configured_storage(uri=None):
-    # Cargar un módulo independiente evita sustituir el limitador que utiliza
-    # otra suite o cambiar sus contadores al comprobar distintas configuraciones.
+    # Mantiene cada prueba independiente.
     with patch.dict(os.environ):
         if uri is None:
             os.environ.pop("RATE_LIMIT_STORAGE_URI", None)
@@ -60,7 +59,7 @@ class RateLimitConfigurationTests(unittest.TestCase):
             self.assertTrue(FixedWindowRateLimiter(second).hit(item, *scope))
             self.assertFalse(FixedWindowRateLimiter(first).hit(item, *scope))
         finally:
-            # Nunca vaciar el almacén: sólo eliminar el contador de esta prueba.
+            # Limpia únicamente los datos de esta prueba.
             first.clear(item.key_for(*scope))
             first.storage.close()
             second.storage.close()

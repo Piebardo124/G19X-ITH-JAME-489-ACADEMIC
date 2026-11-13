@@ -1,4 +1,4 @@
-"""Protege la carga CSV antes de que FastAPI analice el cuerpo multipart."""
+"""Revisa el acceso y el tamaño de las cargas."""
 from fastapi import HTTPException
 from fastapi.security.utils import get_authorization_scheme_param
 from starlette.concurrency import run_in_threadpool
@@ -10,14 +10,13 @@ from app.core.security import require_roles, verify_token
 from app.db.database import SessionLocal
 
 MAX_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
-# El límite de archivo se aplica también en el endpoint. Este margen admite
-# cabeceras y delimitadores multipart sin aceptar cuerpos sin límite.
+# Margen para los datos de la carga.
 MAX_CSV_REQUEST_BYTES = MAX_CSV_UPLOAD_BYTES + 64 * 1024
 CSV_UPLOAD_PATH = "/api/v1/nlp/upload-csv"
 
 
 def verify_csv_upload_access(token: str):
-    """Comprueba la identidad y el rol actuales sin leer el cuerpo de la carga."""
+    """Comprueba los permisos de carga."""
     with SessionLocal() as db:
         current_user = verify_token(token=token, db=db)
         return require_roles("admin", "hr", "analyst")(current_user=current_user)
@@ -46,8 +45,6 @@ class CSVUploadProtectionMiddleware:
                     detail="No autenticado",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            # La sesión pertenece a esta operación síncrona y se cierra en el
-            # mismo thread. El endpoint mantiene sus dependencias de seguridad.
             await run_in_threadpool(verify_csv_upload_access, token)
         except HTTPException as error:
             await JSONResponse(
@@ -73,9 +70,7 @@ class CSVUploadProtectionMiddleware:
                 await reject_oversize()
                 return
 
-        # Contar los bytes reales protege también transferencias sin
-        # Content-Length o con una longitud declarada inferior a la recibida.
-        # El parser no crea archivos temporales hasta validar todo este cuerpo.
+        # Comprueba el tamaño recibido.
         chunks = []
         received_bytes = 0
         while True:

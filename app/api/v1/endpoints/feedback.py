@@ -45,7 +45,7 @@ def _validate_csv_structure(file_content: str) -> tuple[list[dict[str, str]], bo
         rows = []
         row_count = 0
         for cells in reader:
-            # DictReader omite las líneas vacías; conservar ese comportamiento.
+            # Omite líneas vacías.
             if not cells:
                 continue
             if len(cells) != len(headers):
@@ -61,7 +61,7 @@ def _validate_csv_structure(file_content: str) -> tuple[list[dict[str, str]], bo
 
 
 def _validate_csv_row(row: dict, department_ids: set[int]):
-    """Valida los campos admitidos y devuelve el texto y departamento normalizados."""
+    """Revisa los datos de cada fila."""
     if None in row or any(value is None for value in row.values()):
         raise CSVRowValidationError("La cantidad de celdas no coincide con los encabezados.")
     texto = (row.get("text_content") or "").strip()
@@ -200,7 +200,7 @@ def analyze_feedback(
         )
 
 def process_csv_background(file_content: str, import_id: uuid.UUID):
-    """Procesa el CSV y persiste un resumen consultable de la importación."""
+    """Procesa el archivo y guarda su resumen."""
     db = SessionLocal()
     totals = {"total_rows": 0, "processed_rows": 0, "skipped_rows": 0, "failed_rows": 0}
     errors = []
@@ -285,8 +285,7 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                     ai_results["sentiment_label"] == "NO_DISPONIBLE"
                     or ai_results["metadata_ai"].get("is_simulation", False)
                 )
-                # Confirmar el comentario y su contador en la misma transacción
-                # permite consultar el progreso, incluso si el proceso termina.
+                # Guarda el avance de la carga.
                 totals["processed_rows"] += 1
                 if analysis_unavailable:
                     record_error(
@@ -298,8 +297,7 @@ def process_csv_background(file_content: str, import_id: uuid.UUID):
                     try:
                         send_alert_email(alert_id=alert.id, reason=alert.reason)
                     except Exception as email_error:
-                        # La notificación no debe cambiar el resultado de una
-                        # fila ya confirmada en la base de datos.
+                        # Conserva el resultado de la fila.
                         logger.warning(
                             "No se pudo enviar correo de alerta para fila %s (tipo=%s).",
                             index,
@@ -355,7 +353,7 @@ def upload_feeback_csv(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "hr", "analyst"))
 ):
-    """Valida una carga CSV autorizada y la deja en cola para procesarla."""
+    """Revisa el archivo e inicia su carga."""
     filename = file.filename or ""
     if "\x00" in filename:
         raise HTTPException(status_code=400, detail="El nombre del archivo contiene caracteres no admitidos.")
@@ -422,7 +420,7 @@ def get_dashboard_stats(
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "hr", "executive", "analyst"))
 ):
-    """Devuelve métricas agregadas sin incluir texto de comentarios."""
+    """Devuelve un resumen de los resultados."""
     last_day = calendar.monthrange(start_date.year, start_date.month)[1]
     if end_date == date.max:
         raise HTTPException(status_code=400, detail="Fecha final fuera del rango admitido.")
@@ -531,8 +529,7 @@ def get_dashboard_stats(
             if count >= minimum_count
         ][:10]
 
-    # Si una etiqueta no alcanza K=5, ocultar toda la distribución evita que
-    # su conteo pueda deducirse restando las categorías visibles al total.
+    # Protege los grupos con pocas respuestas.
     distribucion_segura, distribucion_suprimida = _safe_sentiment_distribution(label_counts)
 
 

@@ -1,4 +1,4 @@
-"""CLI interactivo para crear usuarios locales que no sean administradores."""
+"""Asistente para crear cuentas de usuario."""
 
 import getpass
 import logging

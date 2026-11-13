@@ -23,8 +23,7 @@ class _FakeSMTP:
 
     def send_message(self, message):
         self.message = message
-        # Force serialization, which used to fail for Spanish accents with
-        # MIMEText's default US-ASCII charset.
+        # Comprueba el mensaje con acentos.
         message.as_bytes()
 
 

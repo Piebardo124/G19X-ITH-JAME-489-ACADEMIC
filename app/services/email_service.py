@@ -48,8 +48,7 @@ Pueden consultar el detalle y actualizar su estado desde el panel de PluriOne.
 Saludos,
 Equipo PluriOne
 """
-    # MIMEText usa ASCII por defecto; motivos de alerta en español pueden
-    # incluir acentos y provocar UnicodeEncodeError al enviar por SMTP.
+    # Permite acentos en el mensaje.
     msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
     try:

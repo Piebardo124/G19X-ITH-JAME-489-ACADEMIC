@@ -1,8 +1,4 @@
-"""Evalúa el pipeline Azure de PluriOne contra etiquetas humanas en un CSV.
-
-No persiste comentarios en PostgreSQL. Sanitiza el texto antes de enviarlo a
-Azure y guarda en el reporte solo IDs, etiquetas, métricas y tiempos.
-"""
+"""Compara los resultados del análisis con una revisión humana."""
 
 from __future__ import annotations
 
@@ -114,7 +110,7 @@ def evaluate(cases: list[dict[str, Any]], delay_seconds: float) -> dict[str, Any
                     or metadata.get("error_detail")
                     or "analysis_unavailable_without_reason"
                 )
-        except Exception as exc:  # continúa para medir cobertura y fallos del lote
+        except Exception as exc:  # Continúa con el siguiente caso.
             error_type = type(exc).__name__
             unavailable_reason = error_type
 
@@ -171,7 +167,7 @@ def evaluate(cases: list[dict[str, Any]], delay_seconds: float) -> dict[str, Any
         "analysis_available": available,
         "unavailable_or_failed": total - available,
         "coverage": round(available / total, 4),
-        # Los análisis no disponibles cuentan como incorrectos en accuracy.
+        # Incluye los casos sin análisis.
         "sentiment_accuracy": round(correct / total, 4),
         "sentiment_correct": correct,
         "sentiment_confusion_matrix": confusion,

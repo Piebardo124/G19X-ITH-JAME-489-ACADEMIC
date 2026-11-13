@@ -39,7 +39,7 @@ class CSVImport(Base):
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
 class FeedbackEntry(Base):
-    """Comentario recibido después de aplicar la sanitización de PII."""
+    """Comentario con los datos personales detectados ocultos."""
     __tablename__ = "feedback_entries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

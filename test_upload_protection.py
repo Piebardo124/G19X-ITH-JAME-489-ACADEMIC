@@ -1,4 +1,4 @@
-"""La autorización y el límite de cuerpo deben ejecutarse antes del parser."""
+"""Pruebas de protección de las cargas."""
 import json
 import tempfile
 import unittest

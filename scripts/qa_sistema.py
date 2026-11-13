@@ -1,8 +1,4 @@
-"""Pruebas integradas en una base temporal; nunca usa las tablas de la base original.
-
-Ejecutar dentro de Compose con QA_DATABASE=plurione_qa_<identificador>.
-Modos: api (crea y prueba), serve (UI en puerto 8000), cleanup (borra solo QA).
-"""
+"""Comprueba el sistema con datos temporales."""
 import os
 import re
 import sys

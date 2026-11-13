@@ -18,9 +18,7 @@ _TECHNOLOGY = re.compile(
     re.I,
 )
 _LABEL = re.compile(r"\[(?:NOMBRE|UBICACION|CORREO|TELEFONO|NUMERO|RFC|CURP) OCULT[OA]\]")
-# Los espacios horizontales Unicode también se usan para disfrazar correos.
-# Sólo la primera separación de dominio acepta espacio después del punto:
-# tras un correo completo, «. Pedido ...» pertenece a la siguiente frase.
+# Variantes de correo.
 _HSPACE = r"[^\S\r\n]"
 _EMAIL_LOCAL_CHARS = r"\w.!#$%&'*+/=?^`{|}~\-"
 _EMAIL = unicode_regex.compile(
@@ -37,7 +35,6 @@ _PHONE = re.compile(
 _UNICODE_DASH = unicode_regex.compile(r"\p{Dash}\Z")
 _RFC = re.compile(
     r"(?<!\w)(?P<base>[A-Za-zÑñ&]{3,4}[ \t]?\d{6})"
-    # Homoclave contigua: mixta. Separada: mayúsculas, sin palabras comunes.
     r"(?P<suffix>[A-Za-z\d]{3}|[ \t]+[A-Z\d]{3})?(?!\w)"
 )
 _CURP = re.compile(r"(?<!\w)[A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z\d]\d(?!\w)", re.I)
@@ -58,12 +55,7 @@ class SanitizationAmbiguityError(ValueError):
 
 
 def _normalize_for_detection(text):
-    """Quita controles de formato invisibles antes de calcular posiciones.
-
-    NFC conserva acentos. Los controles Cf, el combinador invisible y los
-    selectores de variación no deben separar los caracteres de un identificador.
-    No se eliminan los espacios ni los saltos de línea del relato.
-    """
+    """Prepara el texto para su revisión."""
     if any(unicodedata.category(char) == "Cc" and char not in "\t\r\n" for char in text):
         raise SanitizationAmbiguityError("El texto contiene caracteres de control no admitidos.")
     return unicodedata.normalize("NFC", "".join(
@@ -76,11 +68,7 @@ def _normalize_for_detection(text):
 
 
 def _canonical_view(text):
-    """Vista de detección NFKC con posiciones del relato, que no se reescribe.
-
-    El mapa por grafema admite expansiones como ligaduras y conserva los
-    offsets aunque la normalización cambie el número de caracteres.
-    """
+    """Prepara el texto para detectar datos personales."""
     characters, positions = [], []
     for cluster in unicode_regex.finditer(r"\X", text):
         for char in unicodedata.normalize("NFKC", cluster.group()):
@@ -89,7 +77,6 @@ def _canonical_view(text):
             elif _UNICODE_DASH.fullmatch(char):
                 char = "-"
             elif char == "\u3002":
-                # Separador de etiquetas IDNA; FF0E/FF61 llegan aquí por NFKC.
                 char = "."
             elif unicodedata.name(char, "") in {"FRACTION SLASH", "DIVISION SLASH", "REVERSE SOLIDUS"}:
                 char = "/"
@@ -117,7 +104,7 @@ def _without_labels(text):
 
 
 def _contextual_names(doc, text):
-    """Complementa NER con nombres propios tras cargos, sin borrar verbos."""
+    """Busca nombres según el contexto."""
     tokens = [token for token in doc if not token.is_space]
 
     def is_name(token, continuation=False):
@@ -137,7 +124,6 @@ def _contextual_names(doc, text):
         if index >= len(tokens):
             continue
         first = tokens[index]
-        # No cruzar líneas ni frases al buscar el nombre posterior al cargo.
         if not re.fullmatch(r"\s*:?[ \t\r\n]*", text[title.end():first.idx]) or not is_name(first):
             continue
         start, end = first.idx, first.idx + len(first.text)
@@ -148,7 +134,6 @@ def _contextual_names(doc, text):
                 candidate += 1
             if candidate >= len(tokens) or not is_name(tokens[candidate], continuation=True):
                 break
-            # Un conector pertenece al nombre solo si sigue otro nombre propio.
             if any(not re.fullmatch(r"\s+", text[tokens[i - 1].idx + len(tokens[i - 1].text):tokens[i].idx])
                    for i in range(index, candidate + 1)):
                 break
@@ -158,7 +143,7 @@ def _contextual_names(doc, text):
 
 
 def _visible_fragments(start, end, excluded, text):
-    """Dividir una entidad alrededor de etiquetas/PII sin borrarlas ni saltarse el resto."""
+    """Conserva las partes disponibles del texto."""
     fragments = [(start, end)]
     for left, right in excluded:
         remaining = []
@@ -181,7 +166,7 @@ def _visible_fragments(start, end, excluded, text):
 
 
 def _detected_spans(text, include_names=True):
-    """Detecta sobre una vista canónica; sus offsets aún no son los del relato."""
+    """Busca datos personales en el texto."""
     protected = [(match.start(), match.end()) for match in _LABEL.finditer(text)]
     spans = []
     for pattern, label in (
@@ -194,8 +179,7 @@ def _detected_spans(text, include_names=True):
                 match_label = label
                 if pattern is _RFC:
                     suffix = match.group("suffix") or ""
-                    # Una palabra separada de tres letras puede ser homoclave
-                    # o contexto. No adivinar ni borrar palabras silenciosamente.
+                    # Revisa los casos ambiguos.
                     if suffix[:1].isspace():
                         if suffix.strip().casefold() in nlp.Defaults.stop_words:
                             end = match.end("base")
@@ -213,8 +197,7 @@ def _detected_spans(text, include_names=True):
         return spans
     masked = list(text)
     technology = [(match.start(), match.end()) for match in _TECHNOLOGY.finditer(text)]
-    # Una tecnología usada explícitamente como nombre tras un cargo no queda
-    # exenta por la lista de términos técnicos.
+    # Revisa los nombres según su uso.
     technology = [(start, end) for start, end in technology if not any(
         re.fullmatch(r"[ \t]*:?[ \t]*", text[title.end():start])
         for title in list(_TITLE.finditer(text, 0, start)) + list(_SELF_NAME.finditer(text, 0, start))
@@ -228,9 +211,7 @@ def _detected_spans(text, include_names=True):
         spans.extend((left, right, label, priority)
                      for left, right in _visible_fragments(start, end, excluded, text))
     for entity in doc.ents:
-        # Una entidad que incluye un hueco enmascarado no es fiable: spaCy
-        # puede extender PER desde «teléfono» hasta una etiqueta ya oculta.
-        # Los nombres contextuales sí se dividen explícitamente arriba.
+        # Revisa las coincidencias junto a datos ya ocultos.
         if any(entity.start_char < right and entity.end_char > left for left, right in excluded):
             if entity.label_ in {"PER", "LOC"}:
                 label = "[NOMBRE OCULTO]" if entity.label_ == "PER" else "[UBICACION OCULTA]"
@@ -247,8 +228,6 @@ def _detected_spans(text, include_names=True):
             and set(token.morph.get("PronType")) & {"Int", "Rel", "Exc"}
             for token in entity
         ):
-            # Una palabra con función interrogativa/exclamativa (p. ej. «Qué»)
-            # no se convierte en nombre sólo por el error de la etiqueta NER.
             continue
         if entity.label_ in {"PER", "LOC"}:
             label = "[NOMBRE OCULTO]" if entity.label_ == "PER" else "[UBICACION OCULTA]"
@@ -257,7 +236,7 @@ def _detected_spans(text, include_names=True):
 
 
 def sanitize_text(text: str) -> str:
-    """Reduce PII conocida; los nombres se detectan por heurísticas, sin garantía de anonimato."""
+    """Oculta datos personales detectados; puede haber omisiones."""
     if not text:
         return ""
     if "\x00" in text:
@@ -275,8 +254,7 @@ def sanitize_text(text: str) -> str:
     ]
 
     if labels:
-        # Las etiquetas legítimas permanecen protegidas. Si se intercalan para
-        # dividir un identificador, detectarlo sin ellas permite ocultarlo entero.
+        # Revisa datos divididos por etiquetas.
         joined, joined_positions = _without_labels(canonical)
         split_words = [
             label for label in labels
@@ -300,7 +278,7 @@ def sanitize_text(text: str) -> str:
             ]
             spans.append((original_left, original_right, label, 120))
 
-    # Los identificadores y nombres contextuales ganan a entidades amplias.
+    # Da prioridad a las coincidencias más claras.
     accepted = []
     for start, end, label, priority in sorted(spans, key=lambda item: (-item[3], -(item[1] - item[0]), item[0])):
         occupied = protected + [(left, right) for left, right, _ in accepted]
